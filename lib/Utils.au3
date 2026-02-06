@@ -1018,15 +1018,59 @@ Func DeserializeAdvancedCombatGates($serializedGates, ByRef $errorMessage)
 		Return $empty
 	EndIf
 
-	Local $lines = StringSplit(StringStripCR($serializedGates), @LF, $STR_NOCOUNT)
+	Local $normalized = StringStripCR($serializedGates)
+	Local $entries[0]
+	Local $current = ''
+	Local $parenDepth = 0
+
+	For $i = 1 To StringLen($normalized)
+		Local $char = StringMid($normalized, $i, 1)
+		Switch $char
+			Case '('
+				$parenDepth += 1
+				$current &= $char
+			Case ')'
+				$parenDepth -= 1
+				If $parenDepth < 0 Then
+					$errorMessage = 'Invalid gate syntax: unexpected closing parenthesis.'
+					Local $empty[0]
+					Return $empty
+				EndIf
+				$current &= $char
+			Case ',', @LF
+				If $parenDepth == 0 Then
+					Local $entry = StringStripWS($current, 3)
+					If $entry <> '' Then
+						ReDim $entries[UBound($entries) + 1]
+						$entries[UBound($entries) - 1] = $entry
+					EndIf
+					$current = ''
+				Else
+					$current &= $char
+				EndIf
+			Case Else
+				$current &= $char
+		EndSwitch
+	Next
+
+	If $parenDepth <> 0 Then
+		$errorMessage = 'Invalid gate syntax: missing closing parenthesis.'
+		Local $empty[0]
+		Return $empty
+	EndIf
+
+	Local $tailEntry = StringStripWS($current, 3)
+	If $tailEntry <> '' Then
+		ReDim $entries[UBound($entries) + 1]
+		$entries[UBound($entries) - 1] = $tailEntry
+	EndIf
+
 	Local $gates[0]
-	For $index = 0 To UBound($lines) - 1
-		Local $line = StringStripWS($lines[$index], 3)
-		If $line == '' Then ContinueLoop
+	For $index = 0 To UBound($entries) - 1
 		Local $lineError = ''
-		Local $gate = DeserializeAdvancedCombatGate($line, $lineError)
+		Local $gate = DeserializeAdvancedCombatGate($entries[$index], $lineError)
 		If $gate == Null Then
-			$errorMessage = 'Invalid gate at line ' & ($index + 1) & ': ' & $lineError
+			$errorMessage = 'Invalid gate at entry ' & ($index + 1) & ': ' & $lineError
 			Local $empty[0]
 			Return $empty
 		EndIf
