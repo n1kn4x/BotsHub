@@ -549,7 +549,7 @@ Func GuiAdvancedCombatConfigureSkill($skillIndex)
 	'- Is self: the target must be the playable character.' & @CRLF & _
 	'' & @CRLF & _
 	'Prepartion skill conditional gates:' & @CRLF & _
-	'- Is Not Under Skill Effect: the playable character is not under the effect of that skill.', 15, 172, 600, 700)
+	'- Is Not Under Skill Effect: the playable character is not under the effect of that skill.', 15, 172, 600, 550)
 
 	Local $buttonSave = GUICtrlCreateButton('Save', 390, 752, 75, 28)
 	Local $buttonCancel = GUICtrlCreateButton('Cancel', 470, 752, 75, 28)
