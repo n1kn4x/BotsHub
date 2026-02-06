@@ -1128,6 +1128,7 @@ Func GetAdvancedCombatTarget($me, $fightRange, $currentTarget = Null)
 
 	For $foe In $foes
 		If Not EnemyAgentFilter($foe) Then ContinueLoop
+		If GetIsDead($foe) Or DllStructGetData($foe, 'HealthPercent') <= 0 Then ContinueLoop
 		Local $score = GetAdvancedCombatTargetPriorityScore($foe, $professionPriority, $targetLowHp)
 		If $score < $bestScore Then
 			$bestScore = $score
@@ -1135,7 +1136,7 @@ Func GetAdvancedCombatTarget($me, $fightRange, $currentTarget = Null)
 		EndIf
 	Next
 
-	If $currentTarget <> Null And DllStructGetData($currentTarget, 'ID') <> 0 And Not GetIsDead($currentTarget) And GetDistance($me, $currentTarget) < $fightRange Then
+	If $currentTarget <> Null And DllStructGetData($currentTarget, 'ID') <> 0 And Not GetIsDead($currentTarget) And DllStructGetData($currentTarget, 'HealthPercent') > 0 And GetDistance($me, $currentTarget) < $fightRange Then
 		Local $currentScore = GetAdvancedCombatTargetPriorityScore($currentTarget, $professionPriority, $targetLowHp)
 		If $currentScore <= $bestScore Then Return $currentTarget
 	EndIf
@@ -1229,9 +1230,16 @@ Func CloneAdvancedCombatProfessionPriority($source)
 	Return $copied
 EndFunc
 
+Func HasAdvancedCombatAdrenaline($skillSlot)
+	Local $skill = GetSkillByID(GetSkillbarSkillID($skillSlot + 1))
+	Local $requiredAdrenaline = DllStructGetData($skill, 'Adrenaline')
+	If $requiredAdrenaline <= 0 Then Return True
+	Return GetSkillbarSkillAdrenaline($skillSlot + 1) >= $requiredAdrenaline
+EndFunc
+
 Func IsAdvancedCombatSkillReady($skillSlot, $skillsCostMap)
 	Local $sufficientEnergy = $skillsCostMap == Null ? True : (GetEnergy() >= $skillsCostMap[$skillSlot])
-	Return $sufficientEnergy And IsRecharged($skillSlot + 1)
+	Return $sufficientEnergy And HasAdvancedCombatAdrenaline($skillSlot) And IsRecharged($skillSlot + 1)
 EndFunc
 
 Func ShouldUseAdvancedCombatSkill($skillSlot, $skillConfig, $target, $selfAgent, $fightRange, ByRef $lastSkillCastTimes)
