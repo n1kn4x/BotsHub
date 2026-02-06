@@ -429,7 +429,7 @@ Func CreateGUI()
 	$gui_checkbox_advancedcombat_target_lowhp = GUICtrlCreateCheckbox('Target low HP enemies', 31, 84, 220, 20)
 	$gui_checkbox_advancedcombat_target_highhp = GUICtrlCreateCheckbox('Target high HP enemies', 31, 110, 220, 20)
 	Local $gui_label_advancedcombat_targeting_info = GUICtrlCreateLabel('Target prioritization:', 31, 134, 595, 16)
-	$gui_list_advancedcombat_professions = GUICtrlCreateList('', 31, 152, 120, 220)
+	$gui_list_advancedcombat_professions = GUICtrlCreateList('', 31, 152, 120, 220, BitOR($LBS_NOTIFY, $WS_VSCROLL, $WS_BORDER))
 	$gui_button_advancedcombat_profession_up = GUICtrlCreateButton('Move up', 160, 152, 80, 25)
 	$gui_button_advancedcombat_profession_down = GUICtrlCreateButton('Move down', 160, 182, 80, 25)
 	$gui_button_advancedcombat_save = GUICtrlCreateButton('Save AC Config', 31, 382, 110, 25)
@@ -501,13 +501,14 @@ EndFunc
 
 
 
-Func RefreshAdvancedCombatProfessionList()
+Func RefreshAdvancedCombatProfessionList($selectedIndex = -1)
 	GUICtrlSetData($gui_list_advancedcombat_professions, '')
 	Local $order = $advanced_combat_config.Item('professionPriority')
 	For $i = 0 To UBound($order) - 1
 		GUICtrlSetData($gui_list_advancedcombat_professions, $order[$i])
 	Next
-	GUICtrlSetData($gui_list_advancedcombat_professions, $order[0])
+	If $selectedIndex < 0 Or $selectedIndex >= UBound($order) Then $selectedIndex = 0
+	_GUICtrlListBox_SetCurSel(GUICtrlGetHandle($gui_list_advancedcombat_professions), $selectedIndex)
 EndFunc
 
 Func BuildAdvancedCombatSkillSummary($skillConfig)
@@ -640,7 +641,7 @@ Func GuiAdvancedCombatHandler()
 			$order[$index] = $order[$swap]
 			$order[$swap] = $tmp
 			$advanced_combat_config.Item('professionPriority') = $order
-			RefreshAdvancedCombatProfessionList()
+			RefreshAdvancedCombatProfessionList($swap)
 			RefreshAdvancedCombatMode()
 		Case $gui_button_advancedcombat_save
 			Local $filePath = FileSaveDialog('', @ScriptDir & '\conf\advancedcombat', '(*.json)')
