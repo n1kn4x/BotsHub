@@ -105,6 +105,7 @@ Global $gui_label_characterbuilds, $gui_label_heroesbuilds, $gui_edit_characterb
 Global $gui_treeview_lootoptions, $gui_label_lootoptionswarning, $gui_expandlootoptionsbutton, $gui_reducelootoptionsbutton, $gui_loadlootoptionsbutton, $gui_savelootoptionsbutton, $gui_applylootoptionsbutton
 Global $gui_tab_advancedcombat, $gui_checkbox_advancedcombat_enabled, $gui_checkbox_advancedcombat_target_lowhp, $gui_checkbox_advancedcombat_target_highhp, $gui_list_advancedcombat_professions, $gui_button_advancedcombat_profession_up, $gui_button_advancedcombat_profession_down, $gui_button_advancedcombat_save, $gui_button_advancedcombat_load
 Global $gui_button_advancedcombat_skill_config[8]
+Global $gui_label_advancedcombat_skill_summary[8], $gui_label_advancedcombat_gate_syntax
 
 
 ;------------------------------------------------------
@@ -433,8 +434,10 @@ Func CreateGUI()
 	$gui_button_advancedcombat_profession_down = GUICtrlCreateButton('Move down', 160, 182, 80, 25)
 	$gui_button_advancedcombat_save = GUICtrlCreateButton('Save AC Config', 31, 382, 110, 25)
 	$gui_button_advancedcombat_load = GUICtrlCreateButton('Load AC Config', 150, 382, 110, 25)
+	$gui_label_advancedcombat_gate_syntax = GUICtrlCreateLabel('Gate syntax (one per line): Cooldown(500000)' & @CRLF & 'IsHexed(not)' & @CRLF & 'Combo(2,300000)', 300, 60, 310, 45)
 	For $i = 0 To 7
-		$gui_button_advancedcombat_skill_config[$i] = GUICtrlCreateButton('Configure skill ' & ($i + 1), 300 + Mod($i, 2) * 150, 60 + Int($i / 2) * 45, 140, 30)
+		$gui_button_advancedcombat_skill_config[$i] = GUICtrlCreateButton('Skill ' & ($i + 1), 300, 110 + $i * 36, 70, 28)
+		$gui_label_advancedcombat_skill_summary[$i] = GUICtrlCreateLabel('', 377, 114 + $i * 36, 242, 40)
 		GUICtrlSetOnEvent($gui_button_advancedcombat_skill_config[$i], 'GuiAdvancedCombatHandler')
 	Next
 	GUICtrlSetOnEvent($gui_checkbox_advancedcombat_enabled, 'GuiAdvancedCombatHandler')
@@ -449,6 +452,7 @@ Func CreateGUI()
 	GUICtrlSetTip($gui_list_advancedcombat_professions, 'Priority professions. Use move up/down to reorder: Mo,Rt,E,Me,N,A,W,P,D,R')
 	GUICtrlSetTip($gui_button_advancedcombat_save, 'Save advanced combat config as JSON file.')
 	GUICtrlSetTip($gui_button_advancedcombat_load, 'Load advanced combat config from JSON file.')
+	GUICtrlSetTip($gui_label_advancedcombat_gate_syntax, 'Use one conditional gate per line in Skill configuration dialog.')
 	GUICtrlCreateTabItem('')
 
 	; === Inventory tab ===
@@ -506,21 +510,31 @@ Func RefreshAdvancedCombatProfessionList()
 	GUICtrlSetData($gui_list_advancedcombat_professions, $order[0])
 EndFunc
 
+Func BuildAdvancedCombatSkillSummary($skillConfig)
+	Local $gateSummary = SerializeAdvancedCombatGates($skillConfig.Item('gates'))
+	If $gateSummary == '' Then $gateSummary = 'No gates configured'
+	If StringLen($gateSummary) > 95 Then $gateSummary = StringLeft($gateSummary, 92) & '...'
+	Return 'Type: ' & StringLower($skillConfig.Item('type')) & @CRLF & $gateSummary
+EndFunc
+
+Func RefreshAdvancedCombatSkillSummaries()
+	Local $skills = $advanced_combat_config.Item('skills')
+	For $i = 0 To 7
+		GUICtrlSetData($gui_label_advancedcombat_skill_summary[$i], BuildAdvancedCombatSkillSummary($skills[$i]))
+	Next
+EndFunc
+
 Func GuiAdvancedCombatConfigureSkill($skillIndex)
 	Local $skillConfig = $advanced_combat_config.Item('skills')[$skillIndex]
 	Local $gates = $skillConfig.Item('gates')
-	Local $gatesText = ''
-	For $i = 0 To UBound($gates) - 1
-		If $i > 0 Then $gatesText &= @CRLF
-		$gatesText &= $gates[$i].Item('type') & ';' & ($gates[$i].Item('not') ? '1' : '0') & ';' & $gates[$i].Item('value1') & ';' & $gates[$i].Item('value2')
-	Next
+	Local $gatesText = SerializeAdvancedCombatGates($gates)
 
 	Local $previousEventMode = Opt('GUIOnEventMode', False)
 	Local $window = GUICreate('Configure skill ' & ($skillIndex + 1), 630, 800, -1, -1, -1, -1, $gui_botshub)
 	Local $labelType = GUICtrlCreateLabel('Skill type:', 15, 15, 80, 20)
 	Local $comboType = GUICtrlCreateCombo('', 95, 12, 180, 24, BitOR($CBS_DROPDOWNLIST, $WS_VSCROLL))
 	GUICtrlSetData($comboType, 'damage|heal|preparation', StringLower($skillConfig.Item('type')))
-	Local $labelGates = GUICtrlCreateLabel('Conditional gates (one per line): gateType;not(0/1);value1;value2', 15, 50, 520, 18)
+	Local $labelGates = GUICtrlCreateLabel('Conditional gates (one per line): GateName(args)', 15, 50, 520, 18)
 	Local $editGates = GUICtrlCreateEdit($gatesText, 15, 72, 530, 92, $ES_MULTILINE)
 	Local $labelHelp = GUICtrlCreateLabel('Information:' & @CRLF & _	
 	'Here you can configure when and how a skill on your bar should be activated.' & @CRLF & _
@@ -553,7 +567,7 @@ Func GuiAdvancedCombatConfigureSkill($skillIndex)
 
 	Local $buttonSave = GUICtrlCreateButton('Save', 390, 752, 75, 28)
 	Local $buttonCancel = GUICtrlCreateButton('Cancel', 470, 752, 75, 28)
-	GUICtrlSetTip($editGates, 'Example: Cooldown;0;4000;' & @CRLF & 'Example: Combo;0;3;5000')
+	GUICtrlSetTip($editGates, 'Examples:' & @CRLF & 'Cooldown(500000)' & @CRLF & 'IsHexed(not)' & @CRLF & 'Combo(2,300000)')
 	GUISetState(@SW_SHOW, $window)
 
 	Local $accepted = False
@@ -568,21 +582,12 @@ Func GuiAdvancedCombatConfigureSkill($skillIndex)
 					Warn('Invalid skill type, keeping previous value.')
 					ContinueLoop
 				EndIf
-				Local $rawLines = StringSplit(StringStripCR(GUICtrlRead($editGates)), @LF, $STR_NOCOUNT)
-				Local $parsedGates[0]
-				For $line In $rawLines
-					$line = StringStripWS($line, 3)
-					If $line == '' Then ContinueLoop
-					Local $parts = StringSplit($line, ';', $STR_NOCOUNT)
-					If UBound($parts) < 2 Then ContinueLoop
-					Local $gate = ObjCreate('Scripting.Dictionary')
-					$gate.Add('type', $parts[0])
-					$gate.Add('not', UBound($parts) > 1 And $parts[1] == '1')
-					$gate.Add('value1', UBound($parts) > 2 ? $parts[2] : '')
-					$gate.Add('value2', UBound($parts) > 3 ? $parts[3] : '')
-					ReDim $parsedGates[UBound($parsedGates) + 1]
-					$parsedGates[UBound($parsedGates) - 1] = $gate
-				Next
+				Local $parseError = ''
+				Local $parsedGates = DeserializeAdvancedCombatGates(GUICtrlRead($editGates), $parseError)
+				If $parseError <> '' Then
+					Warn($parseError)
+					ContinueLoop
+				EndIf
 				$skillConfig.Item('type') = $skillType
 				$skillConfig.Item('gates') = $parsedGates
 				$accepted = True
@@ -592,7 +597,10 @@ Func GuiAdvancedCombatConfigureSkill($skillIndex)
 
 	GUIDelete($window)
 	Opt('GUIOnEventMode', $previousEventMode)
-	If $accepted Then Info('Configured advanced combat skill ' & ($skillIndex + 1))
+	If $accepted Then
+		RefreshAdvancedCombatSkillSummaries()
+		Info('Configured advanced combat skill ' & ($skillIndex + 1))
+	EndIf
 EndFunc
 
 Func GuiAdvancedCombatHandler()
@@ -671,6 +679,7 @@ Func GuiAdvancedCombatHandler()
 			$advanced_combat_config.Item('skills') = $skills
 			RefreshAdvancedCombatMode()
 			ApplyConfigToGUI()
+			RefreshAdvancedCombatSkillSummaries()
 		Case Else
 			For $i = 0 To 7
 				If @GUI_CtrlId == $gui_button_advancedcombat_skill_config[$i] Then
@@ -797,6 +806,7 @@ Func GuiMainButtonHandler()
 			LoadRunConfiguration($filePath)
 			RefreshAdvancedCombatMode()
 			ApplyConfigToGUI()
+			RefreshAdvancedCombatSkillSummaries()
 			; If run config contains a link to loot config, we need to reload loot as well
 			; We could compare old/new value or loot_configuration to see if this is worth it
 			LoadDefaultLootConfiguration()
@@ -1780,6 +1790,7 @@ Func ApplyConfigToGUI()
 	GUICtrlSetState($gui_checkbox_advancedcombat_target_highhp, $advanced_combat_config.Item('targetHighHp') ? $GUI_CHECKED : $GUI_UNCHECKED)
 	RefreshAdvancedCombatProfessionList()
 	RefreshAdvancedCombatMode()
+	RefreshAdvancedCombatSkillSummaries()
 	GUICtrlSetData($gui_input_build_player, $run_options_cache['team.player_build'])
 	GUICtrlSetData($gui_input_build_hero_1, $run_options_cache['team.hero_1_build'])
 	GUICtrlSetData($gui_input_build_hero_2, $run_options_cache['team.hero_2_build'])

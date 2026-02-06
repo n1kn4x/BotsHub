@@ -926,20 +926,78 @@ EndFunc
 
 Func SerializeAdvancedCombatGate($gate)
 	Local $gateType = $gate.Item('type')
-	Local $negated = $gate.Item('not') ? '1' : '0'
-	Local $value1 = $gate.Item('value1')
-	Local $value2 = $gate.Item('value2')
-	Return $gateType & '~' & $negated & '~' & $value1 & '~' & $value2
+	Local $args[0]
+	If $gate.Item('not') Then
+		ReDim $args[UBound($args) + 1]
+		$args[UBound($args) - 1] = 'not'
+	EndIf
+	Local $value1 = StringStripWS($gate.Item('value1'), 3)
+	Local $value2 = StringStripWS($gate.Item('value2'), 3)
+	If $value1 <> '' Then
+		ReDim $args[UBound($args) + 1]
+		$args[UBound($args) - 1] = $value1
+	EndIf
+	If $value2 <> '' Then
+		ReDim $args[UBound($args) + 1]
+		$args[UBound($args) - 1] = $value2
+	EndIf
+	Local $serialized = $gateType & '('
+	For $i = 0 To UBound($args) - 1
+		If $i > 0 Then $serialized &= ','
+		$serialized &= $args[$i]
+	Next
+	Return $serialized & ')'
 EndFunc
 
-Func DeserializeAdvancedCombatGate($serializedGate)
-	Local $parts = StringSplit($serializedGate, '~', $STR_NOCOUNT)
-	If UBound($parts) < 4 Then Return Null
+Func DeserializeAdvancedCombatGate($serializedGate, ByRef $errorMessage = '')
+	Local $line = StringStripWS($serializedGate, 3)
+	If $line == '' Then Return Null
+	Local $openParen = StringInStr($line, '(', 0, 1)
+	Local $closeParen = StringInStr($line, ')', 0, -1)
+	If $openParen <= 1 Or $closeParen <= $openParen Or $closeParen <> StringLen($line) Then
+		$errorMessage = 'Invalid gate syntax: "' & $line & '". Expected GateName(arg1,arg2).'
+		Return Null
+	EndIf
+
+	Local $gateType = StringStripWS(StringLeft($line, $openParen - 1), 3)
+	If $gateType == '' Then
+		$errorMessage = 'Missing gate name in line: "' & $line & '".'
+		Return Null
+	EndIf
+
+	Local $argsRaw = StringMid($line, $openParen + 1, $closeParen - $openParen - 1)
+	Local $args[0]
+	If StringStripWS($argsRaw, 3) <> '' Then
+		Local $tokens = StringSplit($argsRaw, ',', $STR_NOCOUNT)
+		For $token In $tokens
+			$token = StringStripWS($token, 3)
+			If $token == '' Then
+				$errorMessage = 'Invalid empty argument in line: "' & $line & '".'
+				Return Null
+			EndIf
+			ReDim $args[UBound($args) + 1]
+			$args[UBound($args) - 1] = $token
+		Next
+	EndIf
+
 	Local $gate = ObjCreate('Scripting.Dictionary')
-	$gate.Add('type', $parts[0])
-	$gate.Add('not', $parts[1] == '1')
-	$gate.Add('value1', $parts[2])
-	$gate.Add('value2', $parts[3])
+	$gate.Add('type', $gateType)
+	$gate.Add('not', False)
+	$gate.Add('value1', '')
+	$gate.Add('value2', '')
+
+	Local $argIndex = 0
+	If UBound($args) > 0 And StringLower($args[0]) == 'not' Then
+		$gate.Item('not') = True
+		$argIndex = 1
+	EndIf
+	If UBound($args) > $argIndex Then $gate.Item('value1') = $args[$argIndex]
+	If UBound($args) > ($argIndex + 1) Then $gate.Item('value2') = $args[$argIndex + 1]
+	If UBound($args) > ($argIndex + 2) Then
+		$errorMessage = 'Too many arguments in line: "' & $line & '".'
+		Return Null
+	EndIf
+
 	Return $gate
 EndFunc
 
@@ -947,22 +1005,31 @@ Func SerializeAdvancedCombatGates($gates)
 	If Not IsArray($gates) Or UBound($gates) == 0 Then Return ''
 	Local $out = ''
 	For $i = 0 To UBound($gates) - 1
-		If $i > 0 Then $out &= '|'
+		If $i > 0 Then $out &= @CRLF
 		$out &= SerializeAdvancedCombatGate($gates[$i])
 	Next
 	Return $out
 EndFunc
 
-Func DeserializeAdvancedCombatGates($serializedGates)
+Func DeserializeAdvancedCombatGates($serializedGates, ByRef $errorMessage = '')
+	$errorMessage = ''
 	If $serializedGates == '' Or $serializedGates == Null Then
 		Local $empty[0]
 		Return $empty
 	EndIf
-	Local $tokens = StringSplit($serializedGates, '|', $STR_NOCOUNT)
+
+	Local $lines = StringSplit(StringStripCR($serializedGates), @LF, $STR_NOCOUNT)
 	Local $gates[0]
-	For $token In $tokens
-		Local $gate = DeserializeAdvancedCombatGate($token)
-		If $gate == Null Then ContinueLoop
+	For $index = 0 To UBound($lines) - 1
+		Local $line = StringStripWS($lines[$index], 3)
+		If $line == '' Then ContinueLoop
+		Local $lineError = ''
+		Local $gate = DeserializeAdvancedCombatGate($line, $lineError)
+		If $gate == Null Then
+			$errorMessage = 'Invalid gate at line ' & ($index + 1) & ': ' & $lineError
+			Local $empty[0]
+			Return $empty
+		EndIf
 		ReDim $gates[UBound($gates) + 1]
 		$gates[UBound($gates) - 1] = $gate
 	Next
