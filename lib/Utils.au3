@@ -1155,17 +1155,17 @@ Func EvaluateAdvancedCombatGate($gate, $skillSlot, $target, $selfAgent, ByRef $l
 			Else
 				$result = TimerDiff($lastSkillCastTimes[$skillSlot - 1]) >= Number($value1)
 			EndIf
-		Case 'distance to target (larger)'
+		Case 'distancetotarget'
 			$result = GetDistance($selfAgent, $target) > Number($value1)
-		Case 'effects of target'
+		Case 'effectsoftarget'
 			$result = GetHasEffectByName($target, $value1)
-		Case 'effects of self'
+		Case 'effectsofself'
 			$result = GetHasEffectByName($selfAgent, $value1)
-		Case 'target knocked-down'
+		Case 'iskd'
 			$result = GetIsKnocked($target)
-		Case 'health below'
+		Case 'healthbelow'
 			$result = DllStructGetData($target, 'HealthPercent') * 100 < Number($value1)
-		Case 'dagger status'
+		Case 'daggerstatus'
 			Switch StringLower($value1)
 				Case 'lead attack'
 					$result = GetHasLeadAttackStatus($selfAgent)
@@ -1183,13 +1183,13 @@ Func EvaluateAdvancedCombatGate($gate, $skillSlot, $target, $selfAgent, ByRef $l
 				Local $comboSkillIndex = Number($value1) - 1
 				$result = $comboSkillIndex >= 0 And $comboSkillIndex < 8 And TimerDiff($lastSkillCastTimes[$comboSkillIndex]) <= Number($value2)
 			EndIf
-		Case 'has effect'
+		Case 'haseffect'
 			$result = GetHasEffectByName($target, $value1)
-		Case 'is party member'
+		Case 'ispartymember'
 			$result = DllStructGetData($target, 'Allegiance') == $ID_ALLEGIANCE_TEAM
-		Case 'is self'
+		Case 'isself'
 			$result = DllStructGetData($target, 'ID') == DllStructGetData($selfAgent, 'ID')
-		Case 'require character is not under skill effect'
+		Case 'notaffectedbyskill'
 			$result = GetHasEffectByName($selfAgent, $value1) == False
 	EndSwitch
 
