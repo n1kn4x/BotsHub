@@ -1107,6 +1107,7 @@ Func GetAdvancedCombatProfessionCode($agent)
 EndFunc
 
 Func GetAdvancedCombatTargetPriorityScore($target, $professionPriority, $targetLowHp)
+	If GetIsDead($target) Then Return 0
 	Local $professionCode = GetAdvancedCombatProfessionCode($target)
 	Local $professionScore = 999
 	For $i = 0 To UBound($professionPriority) - 1
