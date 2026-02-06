@@ -753,6 +753,10 @@ Func GetHasCondition($agent)
 	Return BitAND(DllStructGetData($agent, 'Effects'), 0x0002) > 0
 EndFunc
 
+Func GetIsCrippled($agent)
+	Return BitAND(DllStructGetData($agent, 'Effects'), 0x000A) == 0x000A
+EndFunc
+
 
 ;~ Tests if an agent is dead.
 Func GetIsDead($agent)
@@ -794,6 +798,49 @@ EndFunc
 ;~ Tests if an agent has a weapon spell.
 Func GetHasWeaponSpell($agent)
 	Return BitAND(DllStructGetData($agent, 'Effects'), 0x8000) > 0
+EndFunc
+
+Func GetHasEffectByName($agent, $effectName)
+	Local $effect = StringLower(StringStripWS($effectName, 3))
+	Switch $effect
+		Case 'bleeding'
+			Return GetIsBleeding($agent)
+		Case 'conditioned', 'condition'
+			Return GetHasCondition($agent)
+		Case 'crippled'
+			Return GetIsCrippled($agent)
+		Case 'dead'
+			Return GetIsDead($agent)
+		Case 'deepwounded', 'deep wound'
+			Return GetHasDeepWound($agent)
+		Case 'poisoned'
+			Return GetIsPoisoned($agent)
+		Case 'enchanted'
+			Return GetIsEnchanted($agent)
+		Case 'degen hexed', 'degenhexed'
+			Return GetHasDegenHex($agent)
+		Case 'hexed'
+			Return GetHasHex($agent)
+		Case 'weapon spelled', 'weaponspelled'
+			Return GetHasWeaponSpell($agent)
+	EndSwitch
+	Return False
+EndFunc
+
+Func GetLastStrikeStatus($agent)
+	Return BitAND(DllStructGetData($agent, 'LastStrike'), 0x03)
+EndFunc
+
+Func GetHasLeadAttackStatus($agent)
+	Return GetLastStrikeStatus($agent) == 0x1
+EndFunc
+
+Func GetHasOffhandAttackStatus($agent)
+	Return GetLastStrikeStatus($agent) == 0x2
+EndFunc
+
+Func GetHasDualAttackStatus($agent)
+	Return GetLastStrikeStatus($agent) == 0x3
 EndFunc
 
 
