@@ -674,7 +674,8 @@ Func GuiAdvancedCombatHandler()
 			For $i = 0 To 7
 				Local $stype = _JSON_Get($jsonObject, 'skills.' & ($i + 1) & '.type')
 				If $stype <> Null And $stype <> '' Then $skills[$i].Item('type') = $stype
-				$skills[$i].Item('gates') = DeserializeAdvancedCombatGates(_JSON_Get($jsonObject, 'skills.' & ($i + 1) & '.gates'))
+				Local $deserializeError = ''
+				$skills[$i].Item('gates') = DeserializeAdvancedCombatGates(_JSON_Get($jsonObject, 'skills.' & ($i + 1) & '.gates'), $deserializeError)
 			Next
 			$advanced_combat_config.Item('skills') = $skills
 			RefreshAdvancedCombatMode()

@@ -949,7 +949,7 @@ Func SerializeAdvancedCombatGate($gate)
 	Return $serialized & ')'
 EndFunc
 
-Func DeserializeAdvancedCombatGate($serializedGate, ByRef $errorMessage = '')
+Func DeserializeAdvancedCombatGate($serializedGate, ByRef $errorMessage)
 	Local $line = StringStripWS($serializedGate, 3)
 	If $line == '' Then Return Null
 	Local $openParen = StringInStr($line, '(', 0, 1)
@@ -1011,7 +1011,7 @@ Func SerializeAdvancedCombatGates($gates)
 	Return $out
 EndFunc
 
-Func DeserializeAdvancedCombatGates($serializedGates, ByRef $errorMessage = '')
+Func DeserializeAdvancedCombatGates($serializedGates, ByRef $errorMessage)
 	$errorMessage = ''
 	If $serializedGates == '' Or $serializedGates == Null Then
 		Local $empty[0]
