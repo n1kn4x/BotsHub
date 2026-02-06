@@ -899,6 +899,244 @@ EndFunc
 
 
 #Region Map Clearing Utilities
+Global Const $ADVANCED_COMBAT_PROFESSION_ORDER_DEFAULT[10] = ['Mo', 'Rt', 'E', 'Me', 'N', 'A', 'W', 'P', 'D', 'R']
+
+Global $advanced_combat_config = CreateDefaultAdvancedCombatConfig()
+
+Func CreateDefaultAdvancedCombatConfig()
+	Local $config = ObjCreate('Scripting.Dictionary')
+	$config.Add('enabled', False)
+	$config.Add('targetLowHp', True)
+	$config.Add('targetHighHp', False)
+	Local $professionOrder[UBound($ADVANCED_COMBAT_PROFESSION_ORDER_DEFAULT)]
+	For $i = 0 To UBound($ADVANCED_COMBAT_PROFESSION_ORDER_DEFAULT) - 1
+		$professionOrder[$i] = $ADVANCED_COMBAT_PROFESSION_ORDER_DEFAULT[$i]
+	Next
+	$config.Add('professionPriority', $professionOrder)
+	Local $skills[8]
+	For $i = 0 To 7
+		$skills[$i] = ObjCreate('Scripting.Dictionary')
+		$skills[$i].Add('type', 'damage')
+		Local $gates[0]
+		$skills[$i].Add('gates', $gates)
+	Next
+	$config.Add('skills', $skills)
+	Return $config
+EndFunc
+
+Func SerializeAdvancedCombatGate($gate)
+	Local $gateType = $gate.Item('type')
+	Local $negated = $gate.Item('not') ? '1' : '0'
+	Local $value1 = $gate.Item('value1')
+	Local $value2 = $gate.Item('value2')
+	Return $gateType & '~' & $negated & '~' & $value1 & '~' & $value2
+EndFunc
+
+Func DeserializeAdvancedCombatGate($serializedGate)
+	Local $parts = StringSplit($serializedGate, '~', $STR_NOCOUNT)
+	If UBound($parts) < 4 Then Return Null
+	Local $gate = ObjCreate('Scripting.Dictionary')
+	$gate.Add('type', $parts[0])
+	$gate.Add('not', $parts[1] == '1')
+	$gate.Add('value1', $parts[2])
+	$gate.Add('value2', $parts[3])
+	Return $gate
+EndFunc
+
+Func SerializeAdvancedCombatGates($gates)
+	If Not IsArray($gates) Or UBound($gates) == 0 Then Return ''
+	Local $out = ''
+	For $i = 0 To UBound($gates) - 1
+		If $i > 0 Then $out &= '|'
+		$out &= SerializeAdvancedCombatGate($gates[$i])
+	Next
+	Return $out
+EndFunc
+
+Func DeserializeAdvancedCombatGates($serializedGates)
+	If $serializedGates == '' Or $serializedGates == Null Then
+		Local $empty[0]
+		Return $empty
+	EndIf
+	Local $tokens = StringSplit($serializedGates, '|', $STR_NOCOUNT)
+	Local $gates[0]
+	For $token In $tokens
+		Local $gate = DeserializeAdvancedCombatGate($token)
+		If $gate == Null Then ContinueLoop
+		ReDim $gates[UBound($gates) + 1]
+		$gates[UBound($gates) - 1] = $gate
+	Next
+	Return $gates
+EndFunc
+
+Func GetAdvancedCombatProfessionCode($agent)
+	Switch DllStructGetData($agent, 'Primary')
+		Case $ID_MONK
+			Return 'Mo'
+		Case $ID_RITUALIST
+			Return 'Rt'
+		Case $ID_ELEMENTALIST
+			Return 'E'
+		Case $ID_MESMER
+			Return 'Me'
+		Case $ID_NECROMANCER
+			Return 'N'
+		Case $ID_ASSASSIN
+			Return 'A'
+		Case $ID_WARRIOR
+			Return 'W'
+		Case $ID_PARAGON
+			Return 'P'
+		Case $ID_DERVISH
+			Return 'D'
+		Case $ID_RANGER
+			Return 'R'
+	EndSwitch
+	Return 'R'
+EndFunc
+
+Func GetAdvancedCombatTargetPriorityScore($target, $professionPriority, $targetLowHp)
+	Local $professionCode = GetAdvancedCombatProfessionCode($target)
+	Local $professionScore = 999
+	For $i = 0 To UBound($professionPriority) - 1
+		If $professionPriority[$i] == $professionCode Then
+			$professionScore = $i
+			ExitLoop
+		EndIf
+	Next
+	Local $hpScore = $targetLowHp ? DllStructGetData($target, 'HealthPercent') : (1 - DllStructGetData($target, 'HealthPercent'))
+	Return $professionScore * 1000 + $hpScore
+EndFunc
+
+Func GetAdvancedCombatTarget($me, $fightRange, $currentTarget = Null)
+	Local $foes = GetFoesInRangeOfAgent($me, $fightRange)
+	Local $bestTarget = Null
+	Local $bestScore = 999999
+	Local $targetLowHp = $advanced_combat_config.Item('targetLowHp')
+	Local $professionPriority = $advanced_combat_config.Item('professionPriority')
+
+	For $foe In $foes
+		If Not EnemyAgentFilter($foe) Then ContinueLoop
+		Local $score = GetAdvancedCombatTargetPriorityScore($foe, $professionPriority, $targetLowHp)
+		If $score < $bestScore Then
+			$bestScore = $score
+			$bestTarget = $foe
+		EndIf
+	Next
+
+	If $currentTarget <> Null And DllStructGetData($currentTarget, 'ID') <> 0 And Not GetIsDead($currentTarget) And GetDistance($me, $currentTarget) < $fightRange Then
+		Local $currentScore = GetAdvancedCombatTargetPriorityScore($currentTarget, $professionPriority, $targetLowHp)
+		If $currentScore <= $bestScore Then Return $currentTarget
+	EndIf
+	Return $bestTarget
+EndFunc
+
+Func EvaluateAdvancedCombatGate($gate, $skillSlot, $target, $selfAgent, ByRef $lastSkillCastTimes)
+	Local $gateType = StringLower($gate.Item('type'))
+	Local $value1 = $gate.Item('value1')
+	Local $value2 = $gate.Item('value2')
+	Local $result = True
+
+	Switch $gateType
+		Case 'cooldown'
+			If Not IsNumber($value1) Or $value1 <= 0 Then
+				$result = True
+			Else
+				$result = TimerDiff($lastSkillCastTimes[$skillSlot - 1]) >= Number($value1)
+			EndIf
+		Case 'distance to target (larger)'
+			$result = GetDistance($selfAgent, $target) > Number($value1)
+		Case 'effects of target'
+			$result = GetHasEffectByName($target, $value1)
+		Case 'effects of self'
+			$result = GetHasEffectByName($selfAgent, $value1)
+		Case 'target knocked-down'
+			$result = GetIsKnocked($target)
+		Case 'health below'
+			$result = DllStructGetData($target, 'HealthPercent') * 100 < Number($value1)
+		Case 'dagger status'
+			Switch StringLower($value1)
+				Case 'lead attack'
+					$result = GetHasLeadAttackStatus($selfAgent)
+				Case 'offhand attack'
+					$result = GetHasOffhandAttackStatus($selfAgent)
+				Case 'dual attack'
+					$result = GetHasDualAttackStatus($selfAgent)
+				Case Else
+					$result = False
+			EndSwitch
+		Case 'combo'
+			If Not IsNumber($value1) Or Not IsNumber($value2) Then
+				$result = False
+			Else
+				Local $comboSkillIndex = Number($value1) - 1
+				$result = $comboSkillIndex >= 0 And $comboSkillIndex < 8 And TimerDiff($lastSkillCastTimes[$comboSkillIndex]) <= Number($value2)
+			EndIf
+		Case 'has effect'
+			$result = GetHasEffectByName($target, $value1)
+		Case 'is party member'
+			$result = DllStructGetData($target, 'Allegiance') == $ID_ALLEGIANCE_TEAM
+		Case 'is self'
+			$result = DllStructGetData($target, 'ID') == DllStructGetData($selfAgent, 'ID')
+		Case 'require character is not under skill effect'
+			$result = GetHasEffectByName($selfAgent, $value1) == False
+	EndSwitch
+
+	If $gate.Item('not') Then $result = Not $result
+	Return $result
+EndFunc
+
+Func PickAdvancedCombatHealTarget($fightRange, $gates, $selfAgent, $skillSlot, ByRef $lastSkillCastTimes)
+	Local $allies = GetAgentArray($ID_AGENT_TYPE_NPC)
+	Local $best = Null
+	Local $lowestHp = 2.0
+	For $ally In $allies
+		If DllStructGetData($ally, 'Allegiance') <> $ID_ALLEGIANCE_TEAM Then ContinueLoop
+		If GetDistance($selfAgent, $ally) > $fightRange Then ContinueLoop
+		If GetIsDead($ally) Then ContinueLoop
+		Local $allGatesPass = True
+		For $gate In $gates
+			If Not EvaluateAdvancedCombatGate($gate, $skillSlot, $ally, $selfAgent, $lastSkillCastTimes) Then
+				$allGatesPass = False
+				ExitLoop
+			EndIf
+		Next
+		If $allGatesPass And DllStructGetData($ally, 'HealthPercent') < $lowestHp Then
+			$best = $ally
+			$lowestHp = DllStructGetData($ally, 'HealthPercent')
+		EndIf
+	Next
+	Return $best
+EndFunc
+
+
+Func CloneAdvancedCombatProfessionPriority($source)
+	Local $copied[UBound($source)]
+	For $i = 0 To UBound($source) - 1
+		$copied[$i] = $source[$i]
+	Next
+	Return $copied
+EndFunc
+
+Func IsAdvancedCombatSkillReady($skillSlot, $skillsCostMap)
+	Local $sufficientEnergy = $skillsCostMap == Null ? True : (GetEnergy() >= $skillsCostMap[$skillSlot])
+	Return $sufficientEnergy And IsRecharged($skillSlot + 1)
+EndFunc
+
+Func ShouldUseAdvancedCombatSkill($skillSlot, $skillConfig, $target, $selfAgent, $fightRange, ByRef $lastSkillCastTimes)
+	Local $skillType = StringLower($skillConfig.Item('type'))
+	Local $gates = $skillConfig.Item('gates')
+	Local $skillTarget = $target
+	If $skillType == 'heal' Then
+		$skillTarget = PickAdvancedCombatHealTarget($fightRange, $gates, $selfAgent, $skillSlot + 1, $lastSkillCastTimes)
+		If $skillTarget == Null Then Return Null
+	EndIf
+	For $gate In $gates
+		If Not EvaluateAdvancedCombatGate($gate, $skillSlot + 1, $skillTarget, $selfAgent, $lastSkillCastTimes) Then Return Null
+	Next
+	Return $skillTarget
+EndFunc
+
 Global $default_moveaggroandkill_options = ObjCreate('Scripting.Dictionary')
 $default_moveaggroandkill_options.Add('fightFunction', KillFoesInArea)
 $default_moveaggroandkill_options.Add('fightRange', $RANGE_EARSHOT * 1.5)
@@ -915,6 +1153,12 @@ $Default_MoveAggroAndKill_Options.Add('lootTrappedArea', False)
 $Default_MoveAggroAndKill_Options.Add('ignoreDroppedLoot', False)
 ; default 60 seconds fight duration
 $default_moveaggroandkill_options.Add('fightDuration', 60000)
+
+
+Func RefreshAdvancedCombatMode()
+	$default_moveaggroandkill_options.Item('fightFunction') = $advanced_combat_config.Item('enabled') ? AdvancedCombatKillFoesInArea : KillFoesInArea
+	$default_flagmoveaggroandkill_options.Item('fightFunction') = $advanced_combat_config.Item('enabled') ? AdvancedCombatKillFoesInArea : KillFoesInArea
+EndFunc
 
 Global $default_flagmoveaggroandkill_options = CloneDictMap($default_moveaggroandkill_options)
 $default_flagmoveaggroandkill_options.Item('flagHeroesOnFight') = True
@@ -1135,6 +1379,60 @@ Func KillFoesInArea($options = $default_moveaggroandkill_options)
 	Return $SUCCESS
 EndFunc
 
+
+
+;~ Advanced combat version of KillFoesInArea with dynamic targeting and configurable skill gates
+Func AdvancedCombatKillFoesInArea($options = $default_moveaggroandkill_options)
+	Local $fightRange = ($options.Item('fightRange') <> Null) ? $options.Item('fightRange') : $RANGE_EARSHOT * 1.5
+	Local $flagHeroes = ($options.Item('flagHeroesOnFight') <> Null) ? $options.Item('flagHeroesOnFight') : False
+	Local $callTarget = ($options.Item('callTarget') <> Null) ? $options.Item('callTarget') : True
+	Local $lootInFights = ($options.Item('lootInFights') <> Null) ? $options.Item('lootInFights') : False
+	Local $skillsCostMap = ($options.Item('skillsCostMap') <> Null And UBound($options.Item('skillsCostMap')) == 8) ? $options.Item('skillsCostMap') : Null
+	Local $lootTrappedArea = ($options.Item('lootTrappedArea') <> Null) ? $options.Item('lootTrappedArea') : False
+	Local $ignoreDroppedLoot = ($options.Item('ignoreDroppedLoot') <> Null) ? $options.Item('ignoreDroppedLoot') : False
+
+	If Not $advanced_combat_config.Item('enabled') Then Return KillFoesInArea($options)
+
+	Local $me = GetMyAgent()
+	Local $foesCount = CountFoesInRangeOfAgent($me, $fightRange)
+	Local $target = Null
+	Local $retargetTimer = TimerInit()
+	Local $lastSkillCastTimes[8]
+	For $i = 0 To 7
+		$lastSkillCastTimes[$i] = TimerInit()
+	Next
+	If $flagHeroes Then FanFlagHeroes(260)
+
+	While $foesCount > 0
+		$me = GetMyAgent()
+		If TimerDiff($retargetTimer) >= 1000 Or $target == Null Or GetIsDead($target) Then
+			$target = GetAdvancedCombatTarget($me, $fightRange, $target)
+			$retargetTimer = TimerInit()
+		EndIf
+		If IsPlayerAlive() And $target <> Null And DllStructGetData($target, 'ID') <> 0 And Not GetIsDead($target) And GetDistance($me, $target) < $fightRange Then
+			ChangeTarget($target)
+			If $callTarget Then CallTarget($target)
+			GetAlmostInRangeOfAgent($target)
+			Attack($target)
+			Local $skills = $advanced_combat_config.Item('skills')
+			For $slot = 0 To 7
+				If Not IsAdvancedCombatSkillReady($slot, $skillsCostMap) Then ContinueLoop
+				Local $skillTarget = ShouldUseAdvancedCombatSkill($slot, $skills[$slot], $target, $me, $fightRange, $lastSkillCastTimes)
+				If $skillTarget == Null Then ContinueLoop
+				UseSkillEx($slot + 1, $skillTarget)
+				$lastSkillCastTimes[$slot] = TimerInit()
+				RandomSleep(100)
+			Next
+		EndIf
+		If $lootInFights And IsPlayerAlive() Then PickUpItems(Null, DefaultShouldPickItem, $fightRange)
+		$foesCount = CountFoesInRangeOfAgent(GetMyAgent(), $fightRange)
+		If IsPlayerAndPartyWiped() Then Return $FAIL
+		RandomSleep(100)
+	WEnd
+	If $flagHeroes Then CancelAllHeroes()
+	If Not $ignoreDroppedLoot And IsPlayerAlive() Then PickUpItems($lootTrappedArea ? LootTrappedAreaSafely : Null, DefaultShouldPickItem, $fightRange)
+	Return $SUCCESS
+EndFunc
 
 ;~ Take current character's position (AND orientation) to flag heroes in a fan position
 Func FanFlagHeroes($range = $RANGE_AREA)

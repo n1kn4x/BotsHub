@@ -133,6 +133,7 @@ $run_options_cache['run.buy_faction_scrolls'] = False
 $run_options_cache['run.buy_faction_resources'] = False
 $run_options_cache['run.collect_data'] = False
 $run_options_cache['team.automatic_team_setup'] = False
+$run_options_cache['advanced_combat.enabled'] = False
 ; Overrides on $run_options_cache for frequent usage
 Global $district_name = 'Random EU'
 Global $bags_count = 5
@@ -415,6 +416,27 @@ Func ReadConfigFromJson($jsonString)
 	$run_options_cache['team.hero_5_build'] = _JSON_Get($jsonObject, 'team.hero_5_build')
 	$run_options_cache['team.hero_6_build'] = _JSON_Get($jsonObject, 'team.hero_6_build')
 	$run_options_cache['team.hero_7_build'] = _JSON_Get($jsonObject, 'team.hero_7_build')
+
+	Local $advancedCombatEnabled = _JSON_Get($jsonObject, 'advanced_combat.enabled')
+	If $advancedCombatEnabled <> Null Then $advanced_combat_config.Item('enabled') = $advancedCombatEnabled
+	Local $advancedCombatLow = _JSON_Get($jsonObject, 'advanced_combat.target_low_hp')
+	If $advancedCombatLow <> Null Then $advanced_combat_config.Item('targetLowHp') = $advancedCombatLow
+	Local $advancedCombatHigh = _JSON_Get($jsonObject, 'advanced_combat.target_high_hp')
+	If $advancedCombatHigh <> Null Then $advanced_combat_config.Item('targetHighHp') = $advancedCombatHigh
+	Local $professionPriority = _JSON_Get($jsonObject, 'advanced_combat.profession_priority')
+	If $professionPriority <> Null And $professionPriority <> '' Then
+		Local $priorityTokens = StringSplit($professionPriority, '|', $STR_NOCOUNT)
+		If IsArray($priorityTokens) And UBound($priorityTokens) == 10 Then $advanced_combat_config.Item('professionPriority') = $priorityTokens
+	EndIf
+	Local $skills = $advanced_combat_config.Item('skills')
+	For $i = 0 To 7
+		Local $stype = _JSON_Get($jsonObject, 'advanced_combat.skills.' & ($i + 1) & '.type')
+		If $stype <> Null And $stype <> '' Then $skills[$i].Item('type') = $stype
+		Local $sgates = _JSON_Get($jsonObject, 'advanced_combat.skills.' & ($i + 1) & '.gates')
+		If $sgates <> Null And $sgates <> '' Then $skills[$i].Item('gates') = DeserializeAdvancedCombatGates($sgates)
+	Next
+	$advanced_combat_config.Item('skills') = $skills
+	RefreshAdvancedCombatMode()
 EndFunc
 
 
@@ -464,6 +486,21 @@ Func WriteConfigToJson()
 	_JSON_addChangeDelete($jsonObject, 'team.hero_5_build', $run_options_cache['team.hero_5_build'])
 	_JSON_addChangeDelete($jsonObject, 'team.hero_6_build', $run_options_cache['team.hero_6_build'])
 	_JSON_addChangeDelete($jsonObject, 'team.hero_7_build', $run_options_cache['team.hero_7_build'])
+	_JSON_addChangeDelete($jsonObject, 'advanced_combat.enabled', $advanced_combat_config.Item('enabled'))
+	_JSON_addChangeDelete($jsonObject, 'advanced_combat.target_low_hp', $advanced_combat_config.Item('targetLowHp'))
+	_JSON_addChangeDelete($jsonObject, 'advanced_combat.target_high_hp', $advanced_combat_config.Item('targetHighHp'))
+	Local $priority = $advanced_combat_config.Item('professionPriority')
+	Local $priorityString = ''
+	For $i = 0 To UBound($priority) - 1
+		If $i > 0 Then $priorityString &= '|'
+		$priorityString &= $priority[$i]
+	Next
+	_JSON_addChangeDelete($jsonObject, 'advanced_combat.profession_priority', $priorityString)
+	Local $skills = $advanced_combat_config.Item('skills')
+	For $i = 0 To 7
+		_JSON_addChangeDelete($jsonObject, 'advanced_combat.skills.' & ($i + 1) & '.type', $skills[$i].Item('type'))
+		_JSON_addChangeDelete($jsonObject, 'advanced_combat.skills.' & ($i + 1) & '.gates', SerializeAdvancedCombatGates($skills[$i].Item('gates')))
+	Next
 
 	Return _JSON_Generate($jsonObject)
 EndFunc
