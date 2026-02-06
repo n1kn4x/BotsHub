@@ -565,15 +565,12 @@ Func GuiAdvancedCombatConfigureSkill($skillIndex)
 	'- IsSelf(): the target must be the playable character. Example: IsSelf()' & @CRLF & _
 	'' & @CRLF & _
 	'Prepartion skill conditional gates:' & @CRLF & _
-	'- NotAffectedBySkill(effectName): the playable character must not be under effectName. Example: NotAffectedBySkill(Shadow Form)' & @CRLF & _
-	'' & @CRLF & _
-	'Negation examples:' & @CRLF & _
-	'- IsHexed(not)' & @CRLF & _
-	'- Combo(not,2,300000)', 15, 172, 600, 550)
+	'- NotAffectedBySkill(effectName): the playable character must not be under effectName. Example: NotAffectedBySkill(Shadow Form)', _
+	15, 172, 600, 550)
 
 	Local $buttonSave = GUICtrlCreateButton('Save', 390, 752, 75, 28)
 	Local $buttonCancel = GUICtrlCreateButton('Cancel', 470, 752, 75, 28)
-	GUICtrlSetTip($editGates, 'Examples:' & @CRLF & 'Cooldown(500000)' & @CRLF & 'IsHexed(not)' & @CRLF & 'Combo(2,300000)')
+	GUICtrlSetTip($editGates, 'Examples:' & @CRLF & 'Cooldown(500000)' & @CRLF & 'IsHexed(not)' & @CRLF & 'Combo(2,300000)' & @CRLF & 'Combo(not,2,300000)')
 	GUISetState(@SW_SHOW, $window)
 
 	Local $accepted = False
