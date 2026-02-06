@@ -23,6 +23,7 @@
 #include 'GWA2_ID.au3'
 #include 'GWA2.au3'
 #include 'Utils-Debugger.au3'
+#include 'JSON.au3'
 
 Opt('MustDeclareVars', True)
 
@@ -1072,6 +1073,7 @@ EndFunc
 
 ;~ Kill foes by casting skills from 1 to 8
 Func KillFoesInArea($options = $default_moveaggroandkill_options)
+	If IsDeclared('run_options_cache') And $run_options_cache['advanced_combat.enabled'] Then Return AdvancedCombatKillFoesInArea($options)
 	Local $fightRange = ($options.Item('fightRange') <> Null) ? $options.Item('fightRange') : $RANGE_EARSHOT * 1.5
 	Local $flagHeroes = ($options.Item('flagHeroesOnFight') <> Null) ? $options.Item('flagHeroesOnFight') : False
 	Local $callTarget = ($options.Item('callTarget') <> Null) ? $options.Item('callTarget') : True
@@ -1132,6 +1134,178 @@ Func KillFoesInArea($options = $default_moveaggroandkill_options)
 	WEnd
 	If $flagHeroes Then CancelAllHeroes()
 	If Not $ignoreDroppedLoot And IsPlayerAlive() Then PickUpItems($lootTrappedArea ? LootTrappedAreaSafely : Null, DefaultShouldPickItem, $fightRange)
+	Return $SUCCESS
+EndFunc
+
+
+Func AC_GetTargetCategory($agent)
+	Local $allegiance = DllStructGetData($agent, 'Allegiance')
+	If $allegiance == $ID_ALLEGIANCE_SPIRIT Then Return 'Spirits'
+	If $allegiance == $ID_ALLEGIANCE_MINION Then Return 'Minions'
+	If $allegiance == $ID_ALLEGIANCE_ANIMAL Then Return 'Pets'
+	Local $primary = DllStructGetData($agent, 'Primary')
+	Switch $primary
+		Case $ID_MONK
+			Return 'Mo'
+		Case $ID_RITUALIST
+			Return 'Rt'
+		Case $ID_ELEMENTALIST
+			Return 'E'
+		Case $ID_MESMER
+			Return 'Me'
+		Case $ID_NECROMANCER
+			Return 'N'
+		Case $ID_ASSASSIN
+			Return 'A'
+		Case $ID_WARRIOR
+			Return 'W'
+		Case $ID_PARAGON
+			Return 'P'
+		Case $ID_DERVISH
+			Return 'D'
+		Case $ID_RANGER
+			Return 'R'
+	EndSwitch
+	Return 'R'
+EndFunc
+
+Func AC_BuildProfessionPriorityMap()
+	Local $defaultOrder = 'Mo|Rt|E|Me|N|A|W|P|D|R|Spirits|Pets|Minions'
+	Local $order = (IsDeclared('run_options_cache') And $run_options_cache['advanced_combat.profession_order'] <> '') ? $run_options_cache['advanced_combat.profession_order'] : $defaultOrder
+	Local $tokens = StringSplit($order, '|', 2)
+	Local $map[]
+	For $i = 0 To UBound($tokens) - 1
+		$map[$tokens[$i]] = $i
+	Next
+	Return $map
+EndFunc
+
+Func AC_GetPriorityScore($agent, $professionPriorityMap, $lowHpMode, $highHpMode)
+	Local $category = AC_GetTargetCategory($agent)
+	Local $profScore = $professionPriorityMap[$category]
+	If $profScore == Null Then $profScore = 999
+	Local $hp = DllStructGetData($agent, 'HealthPercent')
+	Local $hpScore = 0
+	If $lowHpMode Then $hpScore = $hp * 1000
+	If $highHpMode Then $hpScore = (1 - $hp) * 1000
+	Return $profScore * 100000 + $hpScore
+EndFunc
+
+Func AC_FindBestTarget($me, $fightRange, $currentTarget = Null)
+	Local $professionPriorityMap = AC_BuildProfessionPriorityMap()
+	Local $lowHpMode = IsDeclared('run_options_cache') And $run_options_cache['advanced_combat.target_low_hp']
+	Local $highHpMode = IsDeclared('run_options_cache') And $run_options_cache['advanced_combat.target_high_hp']
+	Local $best = Null
+	Local $bestScore = 999999999
+	For $agent In GetAgentArray($ID_AGENT_TYPE_NPC)
+		If $agent == 0x0 Or GetIsDead($agent) Then ContinueLoop
+		Local $allegiance = DllStructGetData($agent, 'Allegiance')
+		If $allegiance <> $ID_ALLEGIANCE_FOE And $allegiance <> $ID_ALLEGIANCE_SPIRIT And $allegiance <> $ID_ALLEGIANCE_MINION And $allegiance <> $ID_ALLEGIANCE_ANIMAL Then ContinueLoop
+		If GetDistance($me, $agent) > $fightRange Then ContinueLoop
+		Local $score = AC_GetPriorityScore($agent, $professionPriorityMap, $lowHpMode, $highHpMode)
+		If $score < $bestScore Then
+			$bestScore = $score
+			$best = $agent
+		EndIf
+	Next
+	If $currentTarget <> Null And Not GetIsDead($currentTarget) And GetDistance($me, $currentTarget) <= $fightRange Then
+		If AC_GetPriorityScore($currentTarget, $professionPriorityMap, $lowHpMode, $highHpMode) <= $bestScore Then Return $currentTarget
+	EndIf
+	Return $best
+EndFunc
+
+Func AC_CheckGate($gate, $slot, $target, $me, ByRef $lastUsedAtBySlot)
+	Local $gateType = StringLower(_JSON_Get($gate, 'type'))
+	Switch $gateType
+		Case 'cooldown'
+			Return TimerDiff($lastUsedAtBySlot[$slot - 1]) >= Number(_JSON_Get($gate, 'ms'))
+		Case 'distance_to_target_larger'
+			Return GetDistance($me, $target) > Number(_JSON_Get($gate, 'value'))
+		Case 'distance_to_target_smaller'
+			Return GetDistance($me, $target) < Number(_JSON_Get($gate, 'value'))
+		Case 'effects_of_target'
+			Return GetHasEffectByName($target, _JSON_Get($gate, 'effect'))
+		Case 'effects_of_self'
+			Return GetHasEffectByName($me, _JSON_Get($gate, 'effect'))
+		Case 'target_knocked_down'
+			Local $mustBeKD = _JSON_Get($gate, 'value')
+			Return (GetIsKnockedDown($target) And $mustBeKD) Or (Not GetIsKnockedDown($target) And Not $mustBeKD)
+		Case 'health_below'
+			Return DllStructGetData($target, 'HealthPercent') * 100 < Number(_JSON_Get($gate, 'value'))
+		Case 'health_above'
+			Return DllStructGetData($target, 'HealthPercent') * 100 > Number(_JSON_Get($gate, 'value'))
+		Case 'dagger_status'
+			Local $status = StringLower(_JSON_Get($gate, 'value'))
+			If $status == 'lead attack' Then Return GetHasLeadAttackStatus($me)
+			If $status == 'offhand attack' Then Return GetHasOffhandAttackStatus($me)
+			If $status == 'dual attack' Then Return GetHasDualAttackStatus($me)
+			Return False
+		Case 'require_character_is_not_under_skill_effect'
+			Return GetEffect(GetSkillbarSkillID($slot)) == 0
+	EndSwitch
+	Return True
+EndFunc
+
+Func AC_CanUseSkill($slot, $target, $me, $gatesBySkill, ByRef $lastUsedAtBySlot)
+	Local $skill = GetSkillByID(GetSkillbarSkillID($slot))
+	If $skill == 0 Then Return False
+	Local $energy = StringReplace(StringReplace(StringReplace(StringMid(DllStructGetData($skill, 'Unknown4'), 6, 1), 'C', '25'), 'B', '15'), 'A', '10')
+	If GetEnergy() < $energy Or Not IsRecharged($slot) Then Return False
+	Local $gates = _JSON_Get($gatesBySkill, String($slot))
+	If $gates == Null Then Return True
+	For $gate In $gates
+		If Not AC_CheckGate($gate, $slot, $target, $me, $lastUsedAtBySlot) Then Return False
+	Next
+	Return True
+EndFunc
+
+Func AdvancedCombatKillFoesInArea($options = $default_moveaggroandkill_options)
+	Local $fightRange = ($options.Item('fightRange') <> Null) ? $options.Item('fightRange') : $RANGE_EARSHOT * 1.5
+	Local $flagHeroes = ($options.Item('flagHeroesOnFight') <> Null) ? $options.Item('flagHeroesOnFight') : False
+	Local $callTarget = ($options.Item('callTarget') <> Null) ? $options.Item('callTarget') : True
+	Local $lootInFights = ($options.Item('lootInFights') <> Null) ? $options.Item('lootInFights') : False
+	Local $me = GetMyAgent()
+	Local $foesCount = CountFoesInRangeOfAgent($me, $fightRange)
+	Local $target = Null
+	Local $lastTargetEval = TimerInit()
+	Local $lastUsedAtBySlot[8]
+	For $i = 0 To 7
+		$lastUsedAtBySlot[$i] = TimerInit() - 600000
+	Next
+	Local $gatesJson = IsDeclared('run_options_cache') ? $run_options_cache['advanced_combat.skill_gates_json'] : '{}'
+	Local $gatesBySkill = _JSON_Parse($gatesJson)
+	If $gatesBySkill == Null Then $gatesBySkill = _JSON_Parse('{}')
+	If $flagHeroes Then FanFlagHeroes(260)
+	While $foesCount > 0
+		If TimerDiff($lastTargetEval) >= 1000 Or $target == Null Or GetIsDead($target) Then
+			$target = AC_FindBestTarget($me, $fightRange, $target)
+			$lastTargetEval = TimerInit()
+		EndIf
+		If IsPlayerAlive() And $target <> Null And DllStructGetData($target, 'ID') <> 0 And Not GetIsDead($target) And GetDistance($me, $target) < $fightRange Then
+			ChangeTarget($target)
+			Sleep(100)
+			If $callTarget Then
+				CallTarget($target)
+				Sleep(100)
+			EndIf
+			GetAlmostInRangeOfAgent($target)
+			Attack($target)
+			For $slot = 1 To 8
+				If AC_CanUseSkill($slot, $target, $me, $gatesBySkill, $lastUsedAtBySlot) Then
+					UseSkillEx($slot, $target)
+					$lastUsedAtBySlot[$slot - 1] = TimerInit()
+					RandomSleep(100)
+				EndIf
+				$target = GetCurrentTarget()
+				If IsPlayerDead() Or $target == Null Or GetIsDead($target) Then ExitLoop
+			Next
+		EndIf
+		If $lootInFights And IsPlayerAlive() Then PickUpItems(Null, DefaultShouldPickItem, $fightRange)
+		$me = GetMyAgent()
+		$foesCount = CountFoesInRangeOfAgent($me, $fightRange)
+		If IsPlayerAndPartyWiped() Then Return $FAIL
+	WEnd
+	If $flagHeroes Then CancelAllHeroes()
 	Return $SUCCESS
 EndFunc
 

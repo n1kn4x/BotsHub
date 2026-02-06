@@ -133,6 +133,12 @@ $run_options_cache['run.buy_faction_scrolls'] = False
 $run_options_cache['run.buy_faction_resources'] = False
 $run_options_cache['run.collect_data'] = False
 $run_options_cache['team.automatic_team_setup'] = False
+$run_options_cache['advanced_combat.enabled'] = False
+$run_options_cache['advanced_combat.target_low_hp'] = True
+$run_options_cache['advanced_combat.target_high_hp'] = False
+$run_options_cache['advanced_combat.profession_order'] = 'Mo|Rt|E|Me|N|A|W|P|D|R|Spirits|Pets|Minions'
+$run_options_cache['advanced_combat.skill_types'] = 'damage|damage|damage|damage|damage|damage|damage|damage'
+$run_options_cache['advanced_combat.skill_gates_json'] = '{}'
 ; Overrides on $run_options_cache for frequent usage
 Global $district_name = 'Random EU'
 Global $bags_count = 5
@@ -415,6 +421,19 @@ Func ReadConfigFromJson($jsonString)
 	$run_options_cache['team.hero_5_build'] = _JSON_Get($jsonObject, 'team.hero_5_build')
 	$run_options_cache['team.hero_6_build'] = _JSON_Get($jsonObject, 'team.hero_6_build')
 	$run_options_cache['team.hero_7_build'] = _JSON_Get($jsonObject, 'team.hero_7_build')
+
+	Local $acEnabled = _JSON_Get($jsonObject, 'advanced_combat.enabled')
+	If $acEnabled <> Null Then $run_options_cache['advanced_combat.enabled'] = $acEnabled
+	Local $acLowHP = _JSON_Get($jsonObject, 'advanced_combat.target_low_hp')
+	If $acLowHP <> Null Then $run_options_cache['advanced_combat.target_low_hp'] = $acLowHP
+	Local $acHighHP = _JSON_Get($jsonObject, 'advanced_combat.target_high_hp')
+	If $acHighHP <> Null Then $run_options_cache['advanced_combat.target_high_hp'] = $acHighHP
+	Local $acProfOrder = _JSON_Get($jsonObject, 'advanced_combat.profession_order')
+	If $acProfOrder <> Null And $acProfOrder <> '' Then $run_options_cache['advanced_combat.profession_order'] = $acProfOrder
+	Local $acSkillTypes = _JSON_Get($jsonObject, 'advanced_combat.skill_types')
+	If $acSkillTypes <> Null And $acSkillTypes <> '' Then $run_options_cache['advanced_combat.skill_types'] = $acSkillTypes
+	Local $acSkillGatesJson = _JSON_Get($jsonObject, 'advanced_combat.skill_gates_json')
+	If $acSkillGatesJson <> Null And $acSkillGatesJson <> '' Then $run_options_cache['advanced_combat.skill_gates_json'] = $acSkillGatesJson
 EndFunc
 
 
@@ -464,6 +483,13 @@ Func WriteConfigToJson()
 	_JSON_addChangeDelete($jsonObject, 'team.hero_5_build', $run_options_cache['team.hero_5_build'])
 	_JSON_addChangeDelete($jsonObject, 'team.hero_6_build', $run_options_cache['team.hero_6_build'])
 	_JSON_addChangeDelete($jsonObject, 'team.hero_7_build', $run_options_cache['team.hero_7_build'])
+
+	_JSON_addChangeDelete($jsonObject, 'advanced_combat.enabled', $run_options_cache['advanced_combat.enabled'])
+	_JSON_addChangeDelete($jsonObject, 'advanced_combat.target_low_hp', $run_options_cache['advanced_combat.target_low_hp'])
+	_JSON_addChangeDelete($jsonObject, 'advanced_combat.target_high_hp', $run_options_cache['advanced_combat.target_high_hp'])
+	_JSON_addChangeDelete($jsonObject, 'advanced_combat.profession_order', $run_options_cache['advanced_combat.profession_order'])
+	_JSON_addChangeDelete($jsonObject, 'advanced_combat.skill_types', $run_options_cache['advanced_combat.skill_types'])
+	_JSON_addChangeDelete($jsonObject, 'advanced_combat.skill_gates_json', $run_options_cache['advanced_combat.skill_gates_json'])
 
 	Return _JSON_Generate($jsonObject)
 EndFunc
