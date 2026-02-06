@@ -507,22 +507,64 @@ EndFunc
 
 Func GuiAdvancedCombatConfigureSkill($skillIndex)
 	Local $skillConfig = $advanced_combat_config.Item('skills')[$skillIndex]
-	Local $skillType = InputBox('Advanced Combat', 'Skill type for skill ' & ($skillIndex + 1) & ' (damage/heal/preparation):', $skillConfig.Item('type'))
-	If @error Then Return
-	$skillType = StringLower(StringStripWS($skillType, 3))
-	If $skillType <> 'damage' And $skillType <> 'heal' And $skillType <> 'preparation' Then
-		Warn('Invalid skill type, keeping previous value.')
-		Return
-	EndIf
-	$skillConfig.Item('type') = $skillType
-	Local $help = 'Conditional gate syntax per line: gateType;not(0/1);value1;value2' & @CRLF & _
-		'Damage gates: Combo, Cooldown, Distance to Target (larger), Effects of Target, Effects of self, Target Knocked-down, Health below, Dagger Status' & @CRLF & _
-		'Heal gates: Health below, Has Effect, Is party member, Is self' & @CRLF & _
-		'Preparation gates: Require Character Is Not Under Skill Effect'
-	Local $gatesRaw = InputBox('Advanced Combat', $help, SerializeAdvancedCombatGates($skillConfig.Item('gates')))
-	If @error Then Return
-	$skillConfig.Item('gates') = DeserializeAdvancedCombatGates(StringReplace($gatesRaw, ';', '~'))
-	Info('Configured advanced combat skill ' & ($skillIndex + 1))
+	Local $gates = $skillConfig.Item('gates')
+	Local $gatesText = ''
+	For $i = 0 To UBound($gates) - 1
+		If $i > 0 Then $gatesText &= @CRLF
+		$gatesText &= $gates[$i].Item('type') & ';' & ($gates[$i].Item('not') ? '1' : '0') & ';' & $gates[$i].Item('value1') & ';' & $gates[$i].Item('value2')
+	Next
+
+	Local $previousEventMode = Opt('GUIOnEventMode', False)
+	Local $window = GUICreate('Configure skill ' & ($skillIndex + 1), 560, 420, -1, -1, -1, -1, $gui_botshub)
+	Local $labelType = GUICtrlCreateLabel('Skill type:', 15, 15, 80, 20)
+	Local $comboType = GUICtrlCreateCombo('', 95, 12, 180, 24, BitOR($CBS_DROPDOWNLIST, $WS_VSCROLL))
+	GUICtrlSetData($comboType, 'damage|heal|preparation', StringLower($skillConfig.Item('type')))
+	Local $labelGates = GUICtrlCreateLabel('Conditional gates (one per line): gateType;not(0/1);value1;value2', 15, 50, 520, 18)
+	Local $editGates = GUICtrlCreateEdit($gatesText, 15, 72, 530, 260, $ES_MULTILINE)
+	Local $labelHelp = GUICtrlCreateLabel('Damage: Combo, Cooldown, Distance to Target (larger), Effects of Target/self, Target Knocked-down, Health below, Dagger Status' & @CRLF & _
+		'Heal: Health below, Has Effect, Is party member, Is self. Preparation: Require Character Is Not Under Skill Effect', 15, 338, 530, 34)
+	Local $buttonSave = GUICtrlCreateButton('Save', 390, 378, 75, 28)
+	Local $buttonCancel = GUICtrlCreateButton('Cancel', 470, 378, 75, 28)
+	GUICtrlSetTip($editGates, 'Example: Cooldown;0;4000;' & @CRLF & 'Example: Combo;0;3;5000')
+	GUISetState(@SW_SHOW, $window)
+
+	Local $accepted = False
+	While True
+		Local $msg = GUIGetMsg()
+		Switch $msg
+			Case $GUI_EVENT_CLOSE, $buttonCancel
+				ExitLoop
+			Case $buttonSave
+				Local $skillType = StringLower(StringStripWS(GUICtrlRead($comboType), 3))
+				If $skillType <> 'damage' And $skillType <> 'heal' And $skillType <> 'preparation' Then
+					Warn('Invalid skill type, keeping previous value.')
+					ContinueLoop
+				EndIf
+				Local $rawLines = StringSplit(StringStripCR(GUICtrlRead($editGates)), @LF, $STR_NOCOUNT)
+				Local $parsedGates[0]
+				For $line In $rawLines
+					$line = StringStripWS($line, 3)
+					If $line == '' Then ContinueLoop
+					Local $parts = StringSplit($line, ';', $STR_NOCOUNT)
+					If UBound($parts) < 2 Then ContinueLoop
+					Local $gate = ObjCreate('Scripting.Dictionary')
+					$gate.Add('type', $parts[0])
+					$gate.Add('not', UBound($parts) > 1 And $parts[1] == '1')
+					$gate.Add('value1', UBound($parts) > 2 ? $parts[2] : '')
+					$gate.Add('value2', UBound($parts) > 3 ? $parts[3] : '')
+					ReDim $parsedGates[UBound($parsedGates) + 1]
+					$parsedGates[UBound($parsedGates) - 1] = $gate
+				Next
+				$skillConfig.Item('type') = $skillType
+				$skillConfig.Item('gates') = $parsedGates
+				$accepted = True
+				ExitLoop
+		EndSwitch
+	WEnd
+
+	GUIDelete($window)
+	Opt('GUIOnEventMode', $previousEventMode)
+	If $accepted Then Info('Configured advanced combat skill ' & ($skillIndex + 1))
 EndFunc
 
 Func GuiAdvancedCombatHandler()
