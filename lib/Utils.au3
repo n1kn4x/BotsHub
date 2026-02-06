@@ -1520,7 +1520,8 @@ Func AdvancedCombatKillFoesInArea($options = $default_moveaggroandkill_options)
 
 	While $foesCount > 0
 		$me = GetMyAgent()
-		If TimerDiff($retargetTimer) >= 1000 Or $target == Null Or GetIsDead($target) Then
+		Local $targetInvalid = $target == Null Or DllStructGetData($target, 'ID') == 0 Or GetIsDead($target) Or DllStructGetData($target, 'HealthPercent') <= 0 Or DllStructGetData($target, 'Allegiance') <> $ID_ALLEGIANCE_FOE Or GetDistance($me, $target) >= $fightRange
+		If TimerDiff($retargetTimer) >= 1000 Or $targetInvalid Then
 			$target = GetAdvancedCombatTarget($me, $fightRange, $target)
 			$retargetTimer = TimerInit()
 		EndIf
