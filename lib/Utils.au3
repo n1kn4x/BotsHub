@@ -1230,8 +1230,12 @@ Func CloneAdvancedCombatProfessionPriority($source)
 EndFunc
 
 Func IsAdvancedCombatSkillReady($skillSlot, $skillsCostMap)
+	Local $skillBarSlot = $skillSlot + 1
 	Local $sufficientEnergy = $skillsCostMap == Null ? True : (GetEnergy() >= $skillsCostMap[$skillSlot])
-	Return $sufficientEnergy And IsRecharged($skillSlot + 1)
+	Local $skill = GetSkillByID(GetSkillbarSkillID($skillBarSlot))
+	Local $requiredAdrenaline = DllStructGetData($skill, 'Adrenaline')
+	Local $sufficientAdrenaline = $requiredAdrenaline <= 0 Or GetSkillbarSkillAdrenaline($skillBarSlot) >= $requiredAdrenaline
+	Return $sufficientEnergy And $sufficientAdrenaline And IsRecharged($skillBarSlot)
 EndFunc
 
 Func ShouldUseAdvancedCombatSkill($skillSlot, $skillConfig, $target, $selfAgent, $fightRange, ByRef $lastSkillCastTimes)
