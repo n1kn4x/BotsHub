@@ -433,7 +433,10 @@ Func ReadConfigFromJson($jsonString)
 		Local $stype = _JSON_Get($jsonObject, 'advanced_combat.skills.' & ($i + 1) & '.type')
 		If $stype <> Null And $stype <> '' Then $skills[$i].Item('type') = $stype
 		Local $sgates = _JSON_Get($jsonObject, 'advanced_combat.skills.' & ($i + 1) & '.gates')
-		If $sgates <> Null And $sgates <> '' Then $skills[$i].Item('gates') = DeserializeAdvancedCombatGates($sgates)
+		If $sgates <> Null And $sgates <> '' Then
+			Local $deserializeError = ''
+			$skills[$i].Item('gates') = DeserializeAdvancedCombatGates($sgates, $deserializeError)
+		EndIf
 	Next
 	$advanced_combat_config.Item('skills') = $skills
 	RefreshAdvancedCombatMode()
