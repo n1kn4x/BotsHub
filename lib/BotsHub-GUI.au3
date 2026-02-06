@@ -528,6 +528,7 @@ Func RefreshAdvancedCombatProfessionListWithSelection($preferredSelection = '')
 		Next
 	EndIf
 
+	GUICtrlSetData($gui_list_advancedcombat_professions, '')
 	GUICtrlSetData($gui_list_advancedcombat_professions, $serialized, $selected)
 EndFunc
 
