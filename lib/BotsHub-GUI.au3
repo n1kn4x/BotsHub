@@ -434,7 +434,7 @@ Func CreateGUI()
 	$gui_button_advancedcombat_profession_down = GUICtrlCreateButton('Move down', 160, 182, 80, 25)
 	$gui_button_advancedcombat_save = GUICtrlCreateButton('Save AC Config', 31, 382, 110, 25)
 	$gui_button_advancedcombat_load = GUICtrlCreateButton('Load AC Config', 150, 382, 110, 25)
-	$gui_label_advancedcombat_gate_syntax = GUICtrlCreateLabel('Gate syntax (one per line): Cooldown(500000)' & @CRLF & 'IsHexed(not)' & @CRLF & 'Combo(2,300000)', 300, 60, 310, 45)
+	$gui_label_advancedcombat_gate_syntax = GUICtrlCreateLabel('Skill configuration:', 300, 60, 310, 45)
 	For $i = 0 To 7
 		$gui_button_advancedcombat_skill_config[$i] = GUICtrlCreateButton('Skill ' & ($i + 1), 300, 110 + $i * 36, 70, 28)
 		$gui_label_advancedcombat_skill_summary[$i] = GUICtrlCreateLabel('', 377, 114 + $i * 36, 242, 40)
