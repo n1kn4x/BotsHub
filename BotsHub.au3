@@ -436,6 +436,7 @@ Func ReadConfigFromJson($jsonString)
 		If $sgates <> Null And $sgates <> '' Then
 			Local $deserializeError = ''
 			$skills[$i].Item('gates') = DeserializeAdvancedCombatGates($sgates, $deserializeError)
+		EndIf
 	Next
 	$advanced_combat_config.Item('skills') = $skills
 	RefreshAdvancedCombatMode()
