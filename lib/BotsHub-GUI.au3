@@ -427,6 +427,7 @@ Func CreateGUI()
 	$gui_checkbox_advancedcombat_enabled = GUICtrlCreateCheckbox('Enable Advanced Combat', 31, 56, 220, 20)
 	$gui_checkbox_advancedcombat_target_lowhp = GUICtrlCreateCheckbox('Target low HP enemies', 31, 84, 220, 20)
 	$gui_checkbox_advancedcombat_target_highhp = GUICtrlCreateCheckbox('Target high HP enemies', 31, 110, 220, 20)
+	Local $gui_label_advancedcombat_targeting_info = GUICtrlCreateLabel('Target prioritization section: select low/high HP mode and reorder professions to change target priority.', 31, 134, 595, 16)
 	$gui_list_advancedcombat_professions = GUICtrlCreateList('', 31, 152, 120, 220)
 	$gui_button_advancedcombat_profession_up = GUICtrlCreateButton('Move up', 160, 152, 80, 25)
 	$gui_button_advancedcombat_profession_down = GUICtrlCreateButton('Move down', 160, 182, 80, 25)
@@ -515,16 +516,20 @@ Func GuiAdvancedCombatConfigureSkill($skillIndex)
 	Next
 
 	Local $previousEventMode = Opt('GUIOnEventMode', False)
-	Local $window = GUICreate('Configure skill ' & ($skillIndex + 1), 560, 420, -1, -1, -1, -1, $gui_botshub)
+	Local $window = GUICreate('Configure skill ' & ($skillIndex + 1), 560, 500, -1, -1, -1, -1, $gui_botshub)
 	Local $labelType = GUICtrlCreateLabel('Skill type:', 15, 15, 80, 20)
 	Local $comboType = GUICtrlCreateCombo('', 95, 12, 180, 24, BitOR($CBS_DROPDOWNLIST, $WS_VSCROLL))
 	GUICtrlSetData($comboType, 'damage|heal|preparation', StringLower($skillConfig.Item('type')))
 	Local $labelGates = GUICtrlCreateLabel('Conditional gates (one per line): gateType;not(0/1);value1;value2', 15, 50, 520, 18)
-	Local $editGates = GUICtrlCreateEdit($gatesText, 15, 72, 530, 260, $ES_MULTILINE)
-	Local $labelHelp = GUICtrlCreateLabel('Damage: Combo, Cooldown, Distance to Target (larger), Effects of Target/self, Target Knocked-down, Health below, Dagger Status' & @CRLF & _
-		'Heal: Health below, Has Effect, Is party member, Is self. Preparation: Require Character Is Not Under Skill Effect', 15, 338, 530, 34)
-	Local $buttonSave = GUICtrlCreateButton('Save', 390, 378, 75, 28)
-	Local $buttonCancel = GUICtrlCreateButton('Cancel', 470, 378, 75, 28)
+	Local $editGates = GUICtrlCreateEdit($gatesText, 15, 72, 530, 92, $ES_MULTILINE)
+	Local $labelHelp = GUICtrlCreateLabel('Damage gates:' & @CRLF & _
+		'- Combo, Cooldown, Distance to Target (larger), Effects of Target, Effects of self, Target Knocked-down, Health below, Dagger Status' & @CRLF & _
+		'Heal gates:' & @CRLF & _
+		'- Health below, Has Effect, Is party member, Is self' & @CRLF & _
+		'Preparation gates:' & @CRLF & _
+		'- Require Character Is Not Under Skill Effect', 15, 172, 530, 210)
+	Local $buttonSave = GUICtrlCreateButton('Save', 390, 452, 75, 28)
+	Local $buttonCancel = GUICtrlCreateButton('Cancel', 470, 452, 75, 28)
 	GUICtrlSetTip($editGates, 'Example: Cooldown;0;4000;' & @CRLF & 'Example: Combo;0;3;5000')
 	GUISetState(@SW_SHOW, $window)
 
