@@ -520,7 +520,7 @@ Func GuiAdvancedCombatConfigureSkill($skillIndex)
 	Local $labelType = GUICtrlCreateLabel('Skill type:', 15, 15, 80, 20)
 	Local $comboType = GUICtrlCreateCombo('', 95, 12, 180, 24, BitOR($CBS_DROPDOWNLIST, $WS_VSCROLL))
 	GUICtrlSetData($comboType, 'damage|heal|preparation', StringLower($skillConfig.Item('type')))
-	Local $labelGates = GUICtrlCreateLabel('Conditional gates (one per line): gateType;not(0/1);value1;value2', 15, 50, 520, 18)
+	Local $labelGates = GUICtrlCreateLabel('Conditional gates: GateName(arg1,arg2,...) (comma or newline separators accepted)', 15, 50, 600, 18)
 	Local $editGates = GUICtrlCreateEdit($gatesText, 15, 72, 530, 92, $ES_MULTILINE)
 	Local $labelHelp = GUICtrlCreateLabel('Information:' & @CRLF & _	
 	'Here you can configure when and how a skill on your bar should be activated.' & @CRLF & _
@@ -530,30 +530,36 @@ Func GuiAdvancedCombatConfigureSkill($skillIndex)
 	'3. Preparation skills: activated without any target' & @CRLF & _
 	'' & @CRLF & _
 	'For each of those skill types you can choose *conditional gates*, which determine logical conditions that need to be satisfied in order for bot to activate that skill.' & @CRLF & _
-	'Every conditional gate consists of a gateType (listed below), a not field (whether that condition is inverted), and two fields to provide addtional values.' & @CRLF & _
+	'Conditional gate syntax: GateName(arg1,arg2,...)' & @CRLF & _
+	'Optional negation: GateName(not) or GateName(not,arg1,...)' & @CRLF & _
+	'Gate separators: comma (,) or newline (for readability).' & @CRLF & _
 	'' & @CRLF & _
 	'Damage skill conditional gates: (targets are enemies)' & @CRLF & _
-	'- Combo: another skill in your bar (given by value1 between 1-8) must have been used first within a time interval value2 microseconds.' & @CRLF & _
-	'- Cooldown: a time interval value1 microseconds needs to pass before that skill is used again.' & @CRLF & _
-	'- Distance to Target (larger): the target must be at least value1 units away.' & @CRLF & _
-	'- Effects of Target: the target must have value1 effect, where value1 can be one of bleeding, conditioned, crippled, dead, deepwounded, poisoned, enchanted, degen hexed, hexed, weapon spelled.' & @CRLF & _
-	'- Effects of self: the playable character must have value1 effect where value1 can be one of bleeding, conditioned, crippled, dead, deepwounded, poisoned, enchanted, degen hexed, hexed, weapon spelled.' & @CRLF & _
-	'- Target Knocked-down: the target must be knocked-down.' & @CRLF & _
-	'- Health below: the target must have health below value1 percent.' & @CRLF & _
-	'- Dagger Status: the target must have value1 dagger statue, where value1 can be one of lead attack, offhand attack, dual attack.' & @CRLF & _
+	'- Combo: another skill in your bar (arg1 between 1-8) must have been used first within arg2 microseconds. Example: Combo(2,300000)' & @CRLF & _
+	'- Cooldown: arg1 microseconds need to pass before that skill is used again. Example: Cooldown(500000)' & @CRLF & _
+	'- Distance to Target (larger): the target must be at least arg1 units away. Example: DistanceToTargetLarger(1200)' & @CRLF & _
+	'- Effects of Target: the target must have arg1 effect, where arg1 can be bleeding, conditioned, crippled, dead, deepwounded, poisoned, enchanted, degen hexed, hexed, weapon spelled. Example: EffectsOfTarget(hexed)' & @CRLF & _
+	'- Effects of self: the playable character must have arg1 effect where arg1 can be bleeding, conditioned, crippled, dead, deepwounded, poisoned, enchanted, degen hexed, hexed, weapon spelled. Example: EffectsOfSelf(enchanted)' & @CRLF & _
+	'- Target Knocked-down: the target must be knocked-down. Example: TargetKnockedDown()' & @CRLF & _
+	'- Health below: the target must have health below arg1 percent. Example: HealthBelow(60)' & @CRLF & _
+	'- Dagger Status: the target must have arg1 dagger status, where arg1 can be lead attack, offhand attack, dual attack. Example: DaggerStatus(dual attack)' & @CRLF & _
 	'' & @CRLF & _
 	'Heal skill conditional gates: (targets are allies)' & @CRLF & _
-	'- Health below: the target must have health blow value1 percent.' & @CRLF & _
-	'- Has Effect: the target must have value1 effect, where value1 can be one of bleeding, conditioned, crippled, dead, deepwounded, poisoned, enchanted, degen hexed, hexed, weapon spelled. ' & @CRLF & _
-	'- Is party member: the target must be a party member (no minions or other NPCs).' & @CRLF & _
-	'- Is self: the target must be the playable character.' & @CRLF & _
+	'- Health below: the target must have health below arg1 percent. Example: HealthBelow(35)' & @CRLF & _
+	'- Has Effect: the target must have arg1 effect, where arg1 can be bleeding, conditioned, crippled, dead, deepwounded, poisoned, enchanted, degen hexed, hexed, weapon spelled. Example: HasEffect(bleeding)' & @CRLF & _
+	'- Is party member: the target must be a party member (no minions or other NPCs). Example: IsPartyMember()' & @CRLF & _
+	'- Is self: the target must be the playable character. Example: IsSelf()' & @CRLF & _
 	'' & @CRLF & _
 	'Prepartion skill conditional gates:' & @CRLF & _
-	'- Is Not Under Skill Effect: the playable character is not under the effect of that skill.', 15, 172, 600, 550)
+	'- Is Not Under Skill Effect: the playable character is not under the effect of that skill. Example: RequireCharacterIsNotUnderSkillEffect()' & @CRLF & _
+	'' & @CRLF & _
+	'Negation examples:' & @CRLF & _
+	'- IsHexed(not)' & @CRLF & _
+	'- Combo(not,2,300000)', 15, 172, 600, 550)
 
 	Local $buttonSave = GUICtrlCreateButton('Save', 390, 752, 75, 28)
 	Local $buttonCancel = GUICtrlCreateButton('Cancel', 470, 752, 75, 28)
-	GUICtrlSetTip($editGates, 'Example: Cooldown;0;4000;' & @CRLF & 'Example: Combo;0;3;5000')
+	GUICtrlSetTip($editGates, 'Example: Cooldown(500000)' & @CRLF & 'Example: IsHexed(not)' & @CRLF & 'Example: Combo(2,300000)')
 	GUISetState(@SW_SHOW, $window)
 
 	Local $accepted = False
