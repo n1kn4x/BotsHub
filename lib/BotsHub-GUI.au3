@@ -504,14 +504,12 @@ EndFunc
 Func RefreshAdvancedCombatProfessionList($selectedProfession = '')
 	GUICtrlSetData($gui_list_advancedcombat_professions, '')
 	Local $order = $advanced_combat_config.Item('professionPriority')
-	Local $professionList = ''
 	For $i = 0 To UBound($order) - 1
-		If $i > 0 Then $professionList &= '|'
-		$professionList &= $order[$i]
+		GUICtrlSetData($gui_list_advancedcombat_professions, $order[$i])
 	Next
-	GUICtrlSetData($gui_list_advancedcombat_professions, $professionList)
 	If $selectedProfession == '' Then $selectedProfession = $order[0]
-	GUICtrlSetData($gui_list_advancedcombat_professions, '', $selectedProfession)
+	Local $selectedIndex = _GUICtrlListBox_FindStringExact(GUICtrlGetHandle($gui_list_advancedcombat_professions), $selectedProfession)
+	If $selectedIndex >= 0 Then _GUICtrlListBox_SetCurSel(GUICtrlGetHandle($gui_list_advancedcombat_professions), $selectedIndex)
 EndFunc
 
 Func BuildAdvancedCombatSkillSummary($skillConfig)
