@@ -501,13 +501,17 @@ EndFunc
 
 
 
-Func RefreshAdvancedCombatProfessionList()
+Func RefreshAdvancedCombatProfessionList($selectedProfession = '')
 	GUICtrlSetData($gui_list_advancedcombat_professions, '')
 	Local $order = $advanced_combat_config.Item('professionPriority')
+	Local $professionList = ''
 	For $i = 0 To UBound($order) - 1
-		GUICtrlSetData($gui_list_advancedcombat_professions, $order[$i])
+		If $i > 0 Then $professionList &= '|'
+		$professionList &= $order[$i]
 	Next
-	GUICtrlSetData($gui_list_advancedcombat_professions, $order[0])
+	GUICtrlSetData($gui_list_advancedcombat_professions, $professionList)
+	If $selectedProfession == '' Then $selectedProfession = $order[0]
+	GUICtrlSetData($gui_list_advancedcombat_professions, '', $selectedProfession)
 EndFunc
 
 Func BuildAdvancedCombatSkillSummary($skillConfig)
@@ -626,21 +630,16 @@ Func GuiAdvancedCombatHandler()
 				GUICtrlSetState($gui_checkbox_advancedcombat_target_lowhp, $GUI_UNCHECKED)
 			EndIf
 		Case $gui_button_advancedcombat_profession_up, $gui_button_advancedcombat_profession_down
-			Local $selected = GUICtrlRead($gui_list_advancedcombat_professions)
-			If $selected == '' Then Return
 			Local $order = $advanced_combat_config.Item('professionPriority')
-			Local $index = -1
-			For $i = 0 To UBound($order) - 1
-				If $order[$i] == $selected Then $index = $i
-			Next
-			If $index < 0 Then Return
-			Local $swap = $index + (@GUI_CtrlId == $gui_button_advancedcombat_profession_up ? -1 : 1)
+			Local $selectedIndex = _GUICtrlListBox_GetCurSel(GUICtrlGetHandle($gui_list_advancedcombat_professions))
+			If $selectedIndex < 0 Then Return
+			Local $swap = $selectedIndex + (@GUI_CtrlId == $gui_button_advancedcombat_profession_up ? -1 : 1)
 			If $swap < 0 Or $swap >= UBound($order) Then Return
-			Local $tmp = $order[$index]
-			$order[$index] = $order[$swap]
+			Local $tmp = $order[$selectedIndex]
+			$order[$selectedIndex] = $order[$swap]
 			$order[$swap] = $tmp
 			$advanced_combat_config.Item('professionPriority') = $order
-			RefreshAdvancedCombatProfessionList()
+			RefreshAdvancedCombatProfessionList($order[$swap])
 			RefreshAdvancedCombatMode()
 		Case $gui_button_advancedcombat_save
 			Local $filePath = FileSaveDialog('', @ScriptDir & '\conf\advancedcombat', '(*.json)')
