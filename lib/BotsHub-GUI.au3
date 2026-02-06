@@ -502,12 +502,33 @@ EndFunc
 
 
 Func RefreshAdvancedCombatProfessionList()
-	GUICtrlSetData($gui_list_advancedcombat_professions, '')
+	RefreshAdvancedCombatProfessionListWithSelection('')
+EndFunc
+
+Func RefreshAdvancedCombatProfessionListWithSelection($preferredSelection = '')
 	Local $order = $advanced_combat_config.Item('professionPriority')
+	If Not IsArray($order) Or UBound($order) == 0 Then
+		GUICtrlSetData($gui_list_advancedcombat_professions, '')
+		Return
+	EndIf
+
+	Local $serialized = ''
 	For $i = 0 To UBound($order) - 1
-		GUICtrlSetData($gui_list_advancedcombat_professions, $order[$i])
+		If $i > 0 Then $serialized &= '|'
+		$serialized &= $order[$i]
 	Next
-	GUICtrlSetData($gui_list_advancedcombat_professions, $order[0])
+
+	Local $selected = $order[0]
+	If $preferredSelection <> '' Then
+		For $i = 0 To UBound($order) - 1
+			If $order[$i] == $preferredSelection Then
+				$selected = $preferredSelection
+				ExitLoop
+			EndIf
+		Next
+	EndIf
+
+	GUICtrlSetData($gui_list_advancedcombat_professions, $serialized, $selected)
 EndFunc
 
 Func BuildAdvancedCombatSkillSummary($skillConfig)
@@ -631,16 +652,21 @@ Func GuiAdvancedCombatHandler()
 			Local $order = $advanced_combat_config.Item('professionPriority')
 			Local $index = -1
 			For $i = 0 To UBound($order) - 1
-				If $order[$i] == $selected Then $index = $i
+				If $order[$i] == $selected Then
+					$index = $i
+					ExitLoop
+				EndIf
 			Next
 			If $index < 0 Then Return
-			Local $swap = $index + (@GUI_CtrlId == $gui_button_advancedcombat_profession_up ? -1 : 1)
+			Local $offset = 1
+			If @GUI_CtrlId == $gui_button_advancedcombat_profession_up Then $offset = -1
+			Local $swap = $index + $offset
 			If $swap < 0 Or $swap >= UBound($order) Then Return
 			Local $tmp = $order[$index]
 			$order[$index] = $order[$swap]
 			$order[$swap] = $tmp
 			$advanced_combat_config.Item('professionPriority') = $order
-			RefreshAdvancedCombatProfessionList()
+			RefreshAdvancedCombatProfessionListWithSelection($selected)
 			RefreshAdvancedCombatMode()
 		Case $gui_button_advancedcombat_save
 			Local $filePath = FileSaveDialog('', @ScriptDir & '\conf\advancedcombat', '(*.json)')
