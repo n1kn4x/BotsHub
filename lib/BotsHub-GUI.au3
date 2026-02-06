@@ -552,20 +552,22 @@ Func GuiAdvancedCombatConfigureSkill($skillIndex)
 	'- Combo(slot,timeWindowMs): another skill in your bar (slot between 1-8) must have been used first within timeWindowMs microseconds. Example: Combo(2,300000)' & @CRLF & _
 	'- Cooldown(cooldownMs): a time interval cooldownMs microseconds needs to pass before that skill is used again. Example: Cooldown(500000)' & @CRLF & _
 	'- DistanceToTarget(distance): the target must be at least distance units away. Example: DistanceToTarget(900)' & @CRLF & _
-	'- EffectsOfTarget(effectName): the target must have effectName, where effectName can be bleeding, conditioned, crippled, dead, deepwounded, poisoned, enchanted, degen hexed, hexed, weapon spelled. Example: EffectsOfTarget(hexed)' & @CRLF & _
-	'- EffectsOfSelf(effectName): the playable character must have effectName, where effectName can be bleeding, conditioned, crippled, dead, deepwounded, poisoned, enchanted, degen hexed, hexed, weapon spelled. Example: EffectsOfSelf(enchanted)' & @CRLF & _
+	'- EffectsOfTarget(effectName): the target must have effectName. Example: EffectsOfTarget(hexed)' & @CRLF & _
+	'- EffectsOfSelf(effectName): the playable character must have effectName. Example: EffectsOfSelf(enchanted)' & @CRLF & _
 	'- IsKD(): the target must be knocked-down. Example: IsKD()' & @CRLF & _
 	'- HealthBelow(percent): the target must have health below percent. Example: HealthBelow(50)' & @CRLF & _
 	'- DaggerStatus(status): the target must have status, where status can be lead attack, offhand attack, dual attack. Example: DaggerStatus(lead attack)' & @CRLF & _
 	'' & @CRLF & _
 	'Heal skill conditional gates: (targets are allies)' & @CRLF & _
 	'- HealthBelow(percent): the target must have health below percent. Example: HealthBelow(50)' & @CRLF & _
-	'- HasEffect(effectName): the target must have effectName, where effectName can be bleeding, conditioned, crippled, dead, deepwounded, poisoned, enchanted, degen hexed, hexed, weapon spelled. Example: HasEffect(bleeding)' & @CRLF & _
+	'- HasEffect(effectName): the target must have effectName. Example: HasEffect(bleeding)' & @CRLF & _
 	'- IsPartyMember(): the target must be a party member (no minions or other NPCs). Example: IsPartyMember()' & @CRLF & _
 	'- IsSelf(): the target must be the playable character. Example: IsSelf()' & @CRLF & _
 	'' & @CRLF & _
 	'Prepartion skill conditional gates:' & @CRLF & _
-	'- NotAffectedBySkill(effectName): the playable character must not be under effectName. Example: NotAffectedBySkill(Shadow Form)', _
+	'- NotAffectedBySkill(effectName): the playable character must not be under effectName. Example: NotAffectedBySkill(Shadow Form)' & @CRLF & _
+	'' & @CRLF & _
+	'Possible values for effectName are: conditioned, bleeding, crippled, dead, deepwounded, poisoned, enchanted, degenhexed, hexed, weaponspelled.', _
 	15, 172, 600, 550)
 
 	Local $buttonSave = GUICtrlCreateButton('Save', 390, 752, 75, 28)
