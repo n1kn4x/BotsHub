@@ -1152,13 +1152,15 @@ Func EvaluateAdvancedCombatGate($gate, $skillSlot, $target, $selfAgent, ByRef $l
 	Local $value1 = $gate.Item('value1')
 	Local $value2 = $gate.Item('value2')
 	Local $result = True
+	Local $numericValue1 = 0
+	Local $numericValue2 = 0
 
 	Switch $gateType
 		Case 'cooldown'
-			If Not IsNumber($value1) Or $value1 <= 0 Then
+			If Not TryParseAdvancedCombatGateNumber($value1, $numericValue1) Or $numericValue1 <= 0 Then
 				$result = True
 			Else
-				$result = TimerDiff($lastSkillCastTimes[$skillSlot - 1]) >= Number($value1)
+				$result = TimerDiff($lastSkillCastTimes[$skillSlot - 1]) >= $numericValue1
 			EndIf
 		Case 'distancetotarget'
 			$result = GetDistance($selfAgent, $target) > Number($value1)
@@ -1182,11 +1184,11 @@ Func EvaluateAdvancedCombatGate($gate, $skillSlot, $target, $selfAgent, ByRef $l
 					$result = False
 			EndSwitch
 		Case 'combo'
-			If Not IsNumber($value1) Or Not IsNumber($value2) Then
+			If Not TryParseAdvancedCombatGateNumber($value1, $numericValue1) Or Not TryParseAdvancedCombatGateNumber($value2, $numericValue2) Then
 				$result = False
 			Else
-				Local $comboSkillIndex = Number($value1) - 1
-				$result = $comboSkillIndex >= 0 And $comboSkillIndex < 8 And TimerDiff($lastSkillCastTimes[$comboSkillIndex]) <= Number($value2)
+				Local $comboSkillIndex = Int($numericValue1) - 1
+				$result = $comboSkillIndex >= 0 And $comboSkillIndex < 8 And TimerDiff($lastSkillCastTimes[$comboSkillIndex]) <= $numericValue2
 			EndIf
 		Case 'haseffect'
 			$result = GetHasEffectByName($target, $value1)
@@ -1200,6 +1202,15 @@ Func EvaluateAdvancedCombatGate($gate, $skillSlot, $target, $selfAgent, ByRef $l
 
 	If $gate.Item('not') Then $result = Not $result
 	Return $result
+EndFunc
+
+Func TryParseAdvancedCombatGateNumber($rawValue, ByRef $parsedValue)
+	$parsedValue = 0
+	Local $normalized = StringStripWS($rawValue, 3)
+	If $normalized == '' Then Return False
+	If StringRegExp($normalized, '^[+-]?(?:\d+\.?\d*|\.\d+)$') == 0 Then Return False
+	$parsedValue = Number($normalized)
+	Return True
 EndFunc
 
 Func PickAdvancedCombatHealTarget($fightRange, $gates, $selfAgent, $skillSlot, ByRef $lastSkillCastTimes)
