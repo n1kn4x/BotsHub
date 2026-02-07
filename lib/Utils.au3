@@ -1135,7 +1135,12 @@ Func GetAdvancedCombatTarget($me, $fightRange, $currentTarget = Null)
 		EndIf
 	Next
 
-	If $currentTarget <> Null And DllStructGetData($currentTarget, 'ID') <> 0 And Not GetIsDead($currentTarget) And GetDistance($me, $currentTarget) < $fightRange Then
+	If $currentTarget <> Null _
+			And DllStructGetData($currentTarget, 'ID') <> 0 _
+			And Not GetIsDead($currentTarget) _
+			And DllStructGetData($currentTarget, 'HealthPercent') > 0 _
+			And DllStructGetData($currentTarget, 'Allegiance') == $ID_ALLEGIANCE_FOE _
+			And GetDistance($me, $currentTarget) < $fightRange Then
 		Local $currentScore = GetAdvancedCombatTargetPriorityScore($currentTarget, $professionPriority, $targetLowHp)
 		If $currentScore <= $bestScore Then Return $currentTarget
 	EndIf
@@ -1520,11 +1525,26 @@ Func AdvancedCombatKillFoesInArea($options = $default_moveaggroandkill_options)
 
 	While $foesCount > 0
 		$me = GetMyAgent()
-		If TimerDiff($retargetTimer) >= 1000 Or $target == Null Or GetIsDead($target) Then
+		If $target <> Null And DllStructGetData($target, 'ID') <> 0 Then
+			$target = GetAgentByID(DllStructGetData($target, 'ID'))
+		EndIf
+
+		If TimerDiff($retargetTimer) >= 1000 _
+				Or $target == Null _
+				Or GetIsDead($target) _
+				Or DllStructGetData($target, 'HealthPercent') <= 0 _
+				Or DllStructGetData($target, 'Allegiance') <> $ID_ALLEGIANCE_FOE _
+				Or GetIsDead(GetCurrentTarget()) Then
 			$target = GetAdvancedCombatTarget($me, $fightRange, $target)
 			$retargetTimer = TimerInit()
 		EndIf
-		If IsPlayerAlive() And $target <> Null And DllStructGetData($target, 'ID') <> 0 And Not GetIsDead($target) And GetDistance($me, $target) < $fightRange Then
+		If IsPlayerAlive() _
+				And $target <> Null _
+				And DllStructGetData($target, 'ID') <> 0 _
+				And Not GetIsDead($target) _
+				And DllStructGetData($target, 'HealthPercent') > 0 _
+				And DllStructGetData($target, 'Allegiance') == $ID_ALLEGIANCE_FOE _
+				And GetDistance($me, $target) < $fightRange Then
 			ChangeTarget($target)
 			If $callTarget Then CallTarget($target)
 			GetAlmostInRangeOfAgent($target)
