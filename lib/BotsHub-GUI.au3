@@ -550,8 +550,8 @@ Func GuiAdvancedCombatConfigureSkill($skillIndex)
 	'Gate separator: use a comma or put each gate on a new line for readability.' & @CRLF & _
 	'' & @CRLF & _
 	'Damage skill conditional gates: (targets are enemies)' & @CRLF & _
-	'- Combo(slot,timeWindowMs): another skill in your bar (slot between 1-8) must have been used first within timeWindowMs microseconds. Example: Combo(2,300000)' & @CRLF & _
-	'- Cooldown(cooldownMs): a time interval cooldownMs microseconds needs to pass before that skill is used again. Example: Cooldown(500000)' & @CRLF & _
+	'- Combo(slot,timeWindowMs): another skill in your bar (slot between 1-8) must have been used first within timeWindowMs milliseconds. Example: Combo(2,3000)' & @CRLF & _
+	'- Cooldown(cooldownMs): a time interval cooldownMs milliseconds needs to pass before that skill is used again. Example: Cooldown(5000)' & @CRLF & _
 	'- DistanceToTarget(distance): the target must be at least distance units away. Example: DistanceToTarget(900)' & @CRLF & _
 	'- EffectsOfTarget(effectName): the target must have effectName. Example: EffectsOfTarget(hexed)' & @CRLF & _
 	'- EffectsOfSelf(effectName): the playable character must have effectName. Example: EffectsOfSelf(enchanted)' & @CRLF & _
@@ -573,7 +573,7 @@ Func GuiAdvancedCombatConfigureSkill($skillIndex)
 
 	Local $buttonSave = GUICtrlCreateButton('Save', 390, 752, 75, 28)
 	Local $buttonCancel = GUICtrlCreateButton('Cancel', 470, 752, 75, 28)
-	GUICtrlSetTip($editGates, 'Examples:' & @CRLF & 'Cooldown(500000)' & @CRLF & 'IsHexed(not)' & @CRLF & 'Combo(2,300000)' & @CRLF & 'Combo(not,2,300000)')
+	GUICtrlSetTip($editGates, 'Examples:' & @CRLF & 'Cooldown(5000)' & @CRLF & 'IsHexed(not)' & @CRLF & 'Combo(2,3000)' & @CRLF & 'Combo(not,2,3000)')
 	GUISetState(@SW_SHOW, $window)
 
 	Local $accepted = False
