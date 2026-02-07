@@ -103,7 +103,7 @@ Global $gui_group_teamoptions, $gui_teamlabel, $gui_teammemberlabel, $gui_teamme
 Global $gui_group_otheroptions
 Global $gui_label_characterbuilds, $gui_label_heroesbuilds, $gui_edit_characterbuilds, $gui_edit_heroesbuilds, $gui_label_farminformations
 Global $gui_treeview_lootoptions, $gui_label_lootoptionswarning, $gui_expandlootoptionsbutton, $gui_reducelootoptionsbutton, $gui_loadlootoptionsbutton, $gui_savelootoptionsbutton, $gui_applylootoptionsbutton
-Global $gui_tab_advancedcombat, $gui_checkbox_advancedcombat_enabled, $gui_checkbox_advancedcombat_target_lowhp, $gui_checkbox_advancedcombat_target_highhp, $gui_list_advancedcombat_professions, $gui_button_advancedcombat_profession_up, $gui_button_advancedcombat_profession_down, $gui_button_advancedcombat_save, $gui_button_advancedcombat_load
+Global $gui_tab_advancedcombat, $gui_checkbox_advancedcombat_enabled, $gui_list_advancedcombat_professions, $gui_button_advancedcombat_profession_up, $gui_button_advancedcombat_profession_down, $gui_button_advancedcombat_save, $gui_button_advancedcombat_load
 Global $gui_button_advancedcombat_skill_config[8]
 Global $gui_label_advancedcombat_skill_summary[8], $gui_label_advancedcombat_gate_syntax
 
@@ -426,14 +426,12 @@ Func CreateGUI()
 	; === Advanced Combat tab ===
 	$gui_tab_advancedcombat = GUICtrlCreateTabItem('Advanced Combat')
 	$gui_checkbox_advancedcombat_enabled = GUICtrlCreateCheckbox('Enable Advanced Combat', 31, 56, 220, 20)
-	$gui_checkbox_advancedcombat_target_lowhp = GUICtrlCreateCheckbox('Target low HP enemies', 31, 84, 220, 20)
-	$gui_checkbox_advancedcombat_target_highhp = GUICtrlCreateCheckbox('Target high HP enemies', 31, 110, 220, 20)
-	Local $gui_label_advancedcombat_targeting_info = GUICtrlCreateLabel('Target prioritization:', 31, 134, 595, 16)
-	$gui_list_advancedcombat_professions = GUICtrlCreateList('', 31, 152, 120, 220, BitOR($LBS_NOTIFY, $WS_VSCROLL, $WS_BORDER))
-	$gui_button_advancedcombat_profession_up = GUICtrlCreateButton('Move up', 160, 152, 80, 25)
-	$gui_button_advancedcombat_profession_down = GUICtrlCreateButton('Move down', 160, 182, 80, 25)
-	$gui_button_advancedcombat_save = GUICtrlCreateButton('Save AC Config', 31, 382, 110, 25)
-	$gui_button_advancedcombat_load = GUICtrlCreateButton('Load AC Config', 150, 382, 110, 25)
+	Local $gui_label_advancedcombat_targeting_info = GUICtrlCreateLabel('Target prioritization (profession rank only):', 31, 84, 595, 16)
+	$gui_list_advancedcombat_professions = GUICtrlCreateList('', 31, 102, 120, 220, BitOR($LBS_NOTIFY, $WS_VSCROLL, $WS_BORDER))
+	$gui_button_advancedcombat_profession_up = GUICtrlCreateButton('Move up', 160, 102, 80, 25)
+	$gui_button_advancedcombat_profession_down = GUICtrlCreateButton('Move down', 160, 132, 80, 25)
+	$gui_button_advancedcombat_save = GUICtrlCreateButton('Save AC Config', 31, 332, 110, 25)
+	$gui_button_advancedcombat_load = GUICtrlCreateButton('Load AC Config', 150, 332, 110, 25)
 	$gui_label_advancedcombat_gate_syntax = GUICtrlCreateLabel('Skill configuration:', 300, 60, 310, 45)
 	For $i = 0 To 7
 		$gui_button_advancedcombat_skill_config[$i] = GUICtrlCreateButton('Skill ' & ($i + 1), 300, 110 + $i * 36, 70, 28)
@@ -441,14 +439,10 @@ Func CreateGUI()
 		GUICtrlSetOnEvent($gui_button_advancedcombat_skill_config[$i], 'GuiAdvancedCombatHandler')
 	Next
 	GUICtrlSetOnEvent($gui_checkbox_advancedcombat_enabled, 'GuiAdvancedCombatHandler')
-	GUICtrlSetOnEvent($gui_checkbox_advancedcombat_target_lowhp, 'GuiAdvancedCombatHandler')
-	GUICtrlSetOnEvent($gui_checkbox_advancedcombat_target_highhp, 'GuiAdvancedCombatHandler')
 	GUICtrlSetOnEvent($gui_button_advancedcombat_profession_up, 'GuiAdvancedCombatHandler')
 	GUICtrlSetOnEvent($gui_button_advancedcombat_profession_down, 'GuiAdvancedCombatHandler')
 	GUICtrlSetOnEvent($gui_button_advancedcombat_save, 'GuiAdvancedCombatHandler')
 	GUICtrlSetOnEvent($gui_button_advancedcombat_load, 'GuiAdvancedCombatHandler')
-	GUICtrlSetTip($gui_checkbox_advancedcombat_target_lowhp, 'Prioritizes low health targets to secure kills.')
-	GUICtrlSetTip($gui_checkbox_advancedcombat_target_highhp, 'Prioritizes high health targets to spread damage.')
 	GUICtrlSetTip($gui_list_advancedcombat_professions, 'Priority professions. Use move up/down to reorder: Mo,Rt,E,Me,N,A,W,P,D,R')
 	GUICtrlSetTip($gui_button_advancedcombat_save, 'Save advanced combat config as JSON file.')
 	GUICtrlSetTip($gui_button_advancedcombat_load, 'Load advanced combat config from JSON file.')
@@ -614,18 +608,6 @@ Func GuiAdvancedCombatHandler()
 		Case $gui_checkbox_advancedcombat_enabled
 			$advanced_combat_config.Item('enabled') = GUICtrlRead($gui_checkbox_advancedcombat_enabled) == $GUI_CHECKED
 			RefreshAdvancedCombatMode()
-		Case $gui_checkbox_advancedcombat_target_lowhp
-			$advanced_combat_config.Item('targetLowHp') = GUICtrlRead($gui_checkbox_advancedcombat_target_lowhp) == $GUI_CHECKED
-			If $advanced_combat_config.Item('targetLowHp') Then
-				$advanced_combat_config.Item('targetHighHp') = False
-				GUICtrlSetState($gui_checkbox_advancedcombat_target_highhp, $GUI_UNCHECKED)
-			EndIf
-		Case $gui_checkbox_advancedcombat_target_highhp
-			$advanced_combat_config.Item('targetHighHp') = GUICtrlRead($gui_checkbox_advancedcombat_target_highhp) == $GUI_CHECKED
-			If $advanced_combat_config.Item('targetHighHp') Then
-				$advanced_combat_config.Item('targetLowHp') = False
-				GUICtrlSetState($gui_checkbox_advancedcombat_target_lowhp, $GUI_UNCHECKED)
-			EndIf
 		Case $gui_button_advancedcombat_profession_up, $gui_button_advancedcombat_profession_down
 			Local $selected = GUICtrlRead($gui_list_advancedcombat_professions)
 			If $selected == '' Then Return
@@ -648,8 +630,6 @@ Func GuiAdvancedCombatHandler()
 			If @error Then Return
 			Local $jsonObject = _JSON_Parse('{}')
 			_JSON_addChangeDelete($jsonObject, 'enabled', $advanced_combat_config.Item('enabled'))
-			_JSON_addChangeDelete($jsonObject, 'target_low_hp', $advanced_combat_config.Item('targetLowHp'))
-			_JSON_addChangeDelete($jsonObject, 'target_high_hp', $advanced_combat_config.Item('targetHighHp'))
 			Local $professionPriority = $advanced_combat_config.Item('professionPriority')
 			Local $prioritySerialized = ''
 			For $i = 0 To UBound($professionPriority) - 1
@@ -672,8 +652,6 @@ Func GuiAdvancedCombatHandler()
 			Local $jsonObject = _JSON_Parse(FileRead($handle))
 			FileClose($handle)
 			$advanced_combat_config.Item('enabled') = _JSON_Get($jsonObject, 'enabled')
-			$advanced_combat_config.Item('targetLowHp') = _JSON_Get($jsonObject, 'target_low_hp')
-			$advanced_combat_config.Item('targetHighHp') = _JSON_Get($jsonObject, 'target_high_hp')
 			Local $orderTokens = StringSplit(_JSON_Get($jsonObject, 'profession_priority'), '|', $STR_NOCOUNT)
 			If IsArray($orderTokens) And UBound($orderTokens) == 10 Then $advanced_combat_config.Item('professionPriority') = $orderTokens
 			Local $skills = $advanced_combat_config.Item('skills')
@@ -1793,8 +1771,6 @@ Func ApplyConfigToGUI()
 	GUICtrlSetState($gui_checkbox_load_build_hero_6, $run_options_cache['team.load_hero_6_build'] ? $GUI_CHECKED : $GUI_UNCHECKED)
 	GUICtrlSetState($gui_checkbox_load_build_hero_7, $run_options_cache['team.load_hero_7_build'] ? $GUI_CHECKED : $GUI_UNCHECKED)
 	GUICtrlSetState($gui_checkbox_advancedcombat_enabled, $advanced_combat_config.Item('enabled') ? $GUI_CHECKED : $GUI_UNCHECKED)
-	GUICtrlSetState($gui_checkbox_advancedcombat_target_lowhp, $advanced_combat_config.Item('targetLowHp') ? $GUI_CHECKED : $GUI_UNCHECKED)
-	GUICtrlSetState($gui_checkbox_advancedcombat_target_highhp, $advanced_combat_config.Item('targetHighHp') ? $GUI_CHECKED : $GUI_UNCHECKED)
 	RefreshAdvancedCombatProfessionList()
 	RefreshAdvancedCombatMode()
 	RefreshAdvancedCombatSkillSummaries()
