@@ -1118,29 +1118,39 @@ Func GetAdvancedCombatTargetPriorityScore($target, $professionPriority)
 EndFunc
 
 Func GetAdvancedCombatTarget($me, $fightRange, $currentTarget = Null)
-	Local $foes = GetFoesInRangeOfAgent($me, $fightRange)
-	Local $bestTarget = Null
-	Local $bestScore = 999999
 	Local $professionPriority = $advanced_combat_config.Item('professionPriority')
 
-	For $foe In $foes
-		If Not EnemyAgentFilter($foe) Then ContinueLoop
-		Local $score = GetAdvancedCombatTargetPriorityScore($foe, $professionPriority)
-		If $score < $bestScore Then
-			$bestScore = $score
-			$bestTarget = $foe
-		EndIf
-	Next
-
+	; Keep the currently engaged target while it is still valid.
+	; This mirrors the old KillFoesInArea behaviour and avoids pulling into new groups.
 	If $currentTarget <> Null _
 			And DllStructGetData($currentTarget, 'ID') <> 0 _
 			And Not GetIsDead($currentTarget) _
 			And DllStructGetData($currentTarget, 'HealthPercent') > 0 _
 			And DllStructGetData($currentTarget, 'Allegiance') == $ID_ALLEGIANCE_FOE _
 			And GetDistance($me, $currentTarget) < $fightRange Then
-		Local $currentScore = GetAdvancedCombatTargetPriorityScore($currentTarget, $professionPriority)
-		If $currentScore <= $bestScore Then Return $currentTarget
+		Return $currentTarget
 	EndIf
+
+	Local $foes = GetFoesInRangeOfAgent($me, $fightRange)
+	Local $bestTarget = Null
+	Local $bestDistance = 999999
+	Local $bestPriorityScore = 999999
+
+	For $foe In $foes
+		If Not EnemyAgentFilter($foe) Then ContinueLoop
+		Local $distance = GetDistance($me, $foe)
+		Local $priorityScore = GetAdvancedCombatTargetPriorityScore($foe, $professionPriority)
+
+		If $distance < $bestDistance - $RANGE_NEARBY Then
+			$bestDistance = $distance
+			$bestPriorityScore = $priorityScore
+			$bestTarget = $foe
+		ElseIf Abs($distance - $bestDistance) <= $RANGE_NEARBY And $priorityScore < $bestPriorityScore Then
+			$bestPriorityScore = $priorityScore
+			$bestTarget = $foe
+		EndIf
+	Next
+
 	Return $bestTarget
 EndFunc
 
