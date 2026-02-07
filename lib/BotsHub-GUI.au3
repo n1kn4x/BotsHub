@@ -426,7 +426,7 @@ Func CreateGUI()
 	; === Advanced Combat tab ===
 	$gui_tab_advancedcombat = GUICtrlCreateTabItem('Advanced Combat')
 	$gui_checkbox_advancedcombat_enabled = GUICtrlCreateCheckbox('Enable Advanced Combat', 31, 56, 220, 20)
-	Local $gui_label_advancedcombat_targeting_info = GUICtrlCreateLabel('Target prioritization (profession rank only):', 31, 84, 595, 16)
+	Local $gui_label_advancedcombat_targeting_info = GUICtrlCreateLabel('Target Prioritzation by Profession:', 31, 84, 595, 16)
 	$gui_list_advancedcombat_professions = GUICtrlCreateList('', 31, 102, 120, 220, BitOR($LBS_NOTIFY, $WS_VSCROLL, $WS_BORDER))
 	$gui_button_advancedcombat_profession_up = GUICtrlCreateButton('Move up', 160, 102, 80, 25)
 	$gui_button_advancedcombat_profession_down = GUICtrlCreateButton('Move down', 160, 132, 80, 25)

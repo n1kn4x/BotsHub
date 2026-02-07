@@ -1113,6 +1113,7 @@ Func GetAdvancedCombatTargetPriorityScore($target, $professionPriority)
 			ExitLoop
 		EndIf
 	Next
+	; Lower index means higher priority (top of profession list is attacked first).
 	Return $professionScore
 EndFunc
 
