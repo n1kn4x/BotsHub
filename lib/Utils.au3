@@ -1175,11 +1175,11 @@ Func EvaluateAdvancedCombatGate($gate, $skillSlot, $target, $selfAgent, ByRef $l
 		Case 'daggerstatus'
 			Switch StringLower($value1)
 				Case 'lead attack'
-					$result = GetHasLeadAttackStatus($selfAgent)
+					$result = GetHasLeadAttackStatus($target)
 				Case 'offhand attack'
-					$result = GetHasOffhandAttackStatus($selfAgent)
+					$result = GetHasOffhandAttackStatus($target)
 				Case 'dual attack'
-					$result = GetHasDualAttackStatus($selfAgent)
+					$result = GetHasDualAttackStatus($target)
 				Case Else
 					$result = False
 			EndSwitch
