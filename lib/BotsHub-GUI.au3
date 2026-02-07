@@ -435,7 +435,7 @@ Func CreateGUI()
 	$gui_label_advancedcombat_gate_syntax = GUICtrlCreateLabel('Skill configuration:', 300, 60, 310, 45)
 	For $i = 0 To 7
 		$gui_button_advancedcombat_skill_config[$i] = GUICtrlCreateButton('Skill ' & ($i + 1), 300, 110 + $i * 36, 70, 28)
-		$gui_label_advancedcombat_skill_summary[$i] = GUICtrlCreateLabel('', 377, 114 + $i * 36, 242, 40)
+		$gui_label_advancedcombat_skill_summary[$i] = GUICtrlCreateLabel('', 377, 114 + $i * 36, 242, 18, $SS_SIMPLE)
 		GUICtrlSetOnEvent($gui_button_advancedcombat_skill_config[$i], 'GuiAdvancedCombatHandler')
 	Next
 	GUICtrlSetOnEvent($gui_checkbox_advancedcombat_enabled, 'GuiAdvancedCombatHandler')
@@ -511,8 +511,9 @@ Func BuildAdvancedCombatSkillSummary($skillConfig)
 	$gateSummary = StringReplace($gateSummary, @LF, ', ')
 	$gateSummary = StringReplace($gateSummary, @CR, ', ')
 	If $gateSummary == '' Then $gateSummary = 'No gates configured'
-	If StringLen($gateSummary) > 95 Then $gateSummary = StringLeft($gateSummary, 92) & '...'
-	Return 'Type: ' & StringLower($skillConfig.Item('type')) & @CRLF & $gateSummary
+	Local $summary = 'Type: ' & StringLower($skillConfig.Item('type')) & ' | Gates: ' & $gateSummary
+	If StringLen($summary) > 95 Then $summary = StringLeft($summary, 92) & '...'
+	Return $summary
 EndFunc
 
 Func RefreshAdvancedCombatSkillSummaries()
