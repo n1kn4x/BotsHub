@@ -1527,6 +1527,7 @@ Func AdvancedCombatKillFoesInArea($options = $default_moveaggroandkill_options)
 	Local $me = GetMyAgent()
 	Local $foesCount = CountFoesInRangeOfAgent($me, $fightRange)
 	Local $target = Null
+	Local $lastCalledTargetID = 0
 	Local $retargetTimer = TimerInit()
 	Local $lastSkillCastTimes[8]
 	For $i = 0 To 7
@@ -1556,8 +1557,12 @@ Func AdvancedCombatKillFoesInArea($options = $default_moveaggroandkill_options)
 				And DllStructGetData($target, 'HealthPercent') > 0 _
 				And DllStructGetData($target, 'Allegiance') == $ID_ALLEGIANCE_FOE _
 				And GetDistance($me, $target) < $fightRange Then
+			Local $targetID = DllStructGetData($target, 'ID')
 			ChangeTarget($target)
-			If $callTarget Then CallTarget($target)
+			If $callTarget And $targetID <> $lastCalledTargetID Then
+				CallTarget($target)
+				$lastCalledTargetID = $targetID
+			EndIf
 			GetAlmostInRangeOfAgent($target)
 			Attack($target)
 			Local $skills = $advanced_combat_config.Item('skills')
