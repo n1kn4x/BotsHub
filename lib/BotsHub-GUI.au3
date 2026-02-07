@@ -435,7 +435,7 @@ Func CreateGUI()
 	$gui_label_advancedcombat_gate_syntax = GUICtrlCreateLabel('Skill configuration:', 300, 60, 310, 45)
 	For $i = 0 To 7
 		$gui_button_advancedcombat_skill_config[$i] = GUICtrlCreateButton('Skill ' & ($i + 1), 300, 110 + $i * 36, 70, 28)
-		$gui_label_advancedcombat_skill_summary[$i] = GUICtrlCreateLabel('', 377, 114 + $i * 36, 242, 40)
+		$gui_label_advancedcombat_skill_summary[$i] = GUICtrlCreateLabel('', 377, 112 + $i * 36, 242, 32)
 		GUICtrlSetOnEvent($gui_button_advancedcombat_skill_config[$i], 'GuiAdvancedCombatHandler')
 	Next
 	GUICtrlSetOnEvent($gui_checkbox_advancedcombat_enabled, 'GuiAdvancedCombatHandler')
@@ -509,7 +509,7 @@ Func BuildAdvancedCombatSkillSummary($skillConfig)
 	Local $gateSummary = SerializeAdvancedCombatGates($skillConfig.Item('gates'))
 	$gateSummary = StringReplace($gateSummary, @CRLF, ', ')
 	If $gateSummary == '' Then $gateSummary = 'No gates configured'
-	If StringLen($gateSummary) > 95 Then $gateSummary = StringLeft($gateSummary, 92) & '...'
+	If StringLen($gateSummary) > 50 Then $gateSummary = StringLeft($gateSummary, 50) & '...'
 	Return 'Type: ' & StringLower($skillConfig.Item('type')) & ' | Gates: ' & $gateSummary
 EndFunc
 
