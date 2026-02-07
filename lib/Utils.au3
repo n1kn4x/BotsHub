@@ -906,8 +906,6 @@ Global $advanced_combat_config = CreateDefaultAdvancedCombatConfig()
 Func CreateDefaultAdvancedCombatConfig()
 	Local $config = ObjCreate('Scripting.Dictionary')
 	$config.Add('enabled', False)
-	$config.Add('targetLowHp', True)
-	$config.Add('targetHighHp', False)
 	Local $professionOrder[UBound($ADVANCED_COMBAT_PROFESSION_ORDER_DEFAULT)]
 	For $i = 0 To UBound($ADVANCED_COMBAT_PROFESSION_ORDER_DEFAULT) - 1
 		$professionOrder[$i] = $ADVANCED_COMBAT_PROFESSION_ORDER_DEFAULT[$i]
@@ -1106,7 +1104,7 @@ Func GetAdvancedCombatProfessionCode($agent)
 	Return 'R'
 EndFunc
 
-Func GetAdvancedCombatTargetPriorityScore($target, $professionPriority, $targetLowHp)
+Func GetAdvancedCombatTargetPriorityScore($target, $professionPriority)
 	Local $professionCode = GetAdvancedCombatProfessionCode($target)
 	Local $professionScore = 999
 	For $i = 0 To UBound($professionPriority) - 1
@@ -1115,20 +1113,19 @@ Func GetAdvancedCombatTargetPriorityScore($target, $professionPriority, $targetL
 			ExitLoop
 		EndIf
 	Next
-	Local $hpScore = $targetLowHp ? DllStructGetData($target, 'HealthPercent') : (1 - DllStructGetData($target, 'HealthPercent'))
-	Return $professionScore * 1000 + $hpScore
+	; Lower index means higher priority (top of profession list is attacked first).
+	Return $professionScore
 EndFunc
 
 Func GetAdvancedCombatTarget($me, $fightRange, $currentTarget = Null)
 	Local $foes = GetFoesInRangeOfAgent($me, $fightRange)
 	Local $bestTarget = Null
 	Local $bestScore = 999999
-	Local $targetLowHp = $advanced_combat_config.Item('targetLowHp')
 	Local $professionPriority = $advanced_combat_config.Item('professionPriority')
 
 	For $foe In $foes
 		If Not EnemyAgentFilter($foe) Then ContinueLoop
-		Local $score = GetAdvancedCombatTargetPriorityScore($foe, $professionPriority, $targetLowHp)
+		Local $score = GetAdvancedCombatTargetPriorityScore($foe, $professionPriority)
 		If $score < $bestScore Then
 			$bestScore = $score
 			$bestTarget = $foe
@@ -1141,7 +1138,7 @@ Func GetAdvancedCombatTarget($me, $fightRange, $currentTarget = Null)
 			And DllStructGetData($currentTarget, 'HealthPercent') > 0 _
 			And DllStructGetData($currentTarget, 'Allegiance') == $ID_ALLEGIANCE_FOE _
 			And GetDistance($me, $currentTarget) < $fightRange Then
-		Local $currentScore = GetAdvancedCombatTargetPriorityScore($currentTarget, $professionPriority, $targetLowHp)
+		Local $currentScore = GetAdvancedCombatTargetPriorityScore($currentTarget, $professionPriority)
 		If $currentScore <= $bestScore Then Return $currentTarget
 	EndIf
 	Return $bestTarget

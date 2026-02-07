@@ -419,10 +419,6 @@ Func ReadConfigFromJson($jsonString)
 
 	Local $advancedCombatEnabled = _JSON_Get($jsonObject, 'advanced_combat.enabled')
 	If $advancedCombatEnabled <> Null Then $advanced_combat_config.Item('enabled') = $advancedCombatEnabled
-	Local $advancedCombatLow = _JSON_Get($jsonObject, 'advanced_combat.target_low_hp')
-	If $advancedCombatLow <> Null Then $advanced_combat_config.Item('targetLowHp') = $advancedCombatLow
-	Local $advancedCombatHigh = _JSON_Get($jsonObject, 'advanced_combat.target_high_hp')
-	If $advancedCombatHigh <> Null Then $advanced_combat_config.Item('targetHighHp') = $advancedCombatHigh
 	Local $professionPriority = _JSON_Get($jsonObject, 'advanced_combat.profession_priority')
 	If $professionPriority <> Null And $professionPriority <> '' Then
 		Local $priorityTokens = StringSplit($professionPriority, '|', $STR_NOCOUNT)
@@ -490,8 +486,6 @@ Func WriteConfigToJson()
 	_JSON_addChangeDelete($jsonObject, 'team.hero_6_build', $run_options_cache['team.hero_6_build'])
 	_JSON_addChangeDelete($jsonObject, 'team.hero_7_build', $run_options_cache['team.hero_7_build'])
 	_JSON_addChangeDelete($jsonObject, 'advanced_combat.enabled', $advanced_combat_config.Item('enabled'))
-	_JSON_addChangeDelete($jsonObject, 'advanced_combat.target_low_hp', $advanced_combat_config.Item('targetLowHp'))
-	_JSON_addChangeDelete($jsonObject, 'advanced_combat.target_high_hp', $advanced_combat_config.Item('targetHighHp'))
 	Local $priority = $advanced_combat_config.Item('professionPriority')
 	Local $priorityString = ''
 	For $i = 0 To UBound($priority) - 1
