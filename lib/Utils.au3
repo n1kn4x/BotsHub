@@ -1158,7 +1158,7 @@ Func EvaluateAdvancedCombatGate($gate, $skillSlot, $target, $selfAgent, ByRef $l
 			If Not IsNumber($value1) Or $value1 <= 0 Then
 				$result = True
 			Else
-				$result = TimerDiff($lastSkillCastTimes[$skillSlot - 1]) >= Number($value1)
+				$result = TimerDiff($lastSkillCastTimes[$skillSlot - 1]) >= NormalizeAdvancedCombatGateTimeToMilliseconds($value1)
 			EndIf
 		Case 'distancetotarget'
 			$result = GetDistance($selfAgent, $target) > Number($value1)
@@ -1186,7 +1186,7 @@ Func EvaluateAdvancedCombatGate($gate, $skillSlot, $target, $selfAgent, ByRef $l
 				$result = False
 			Else
 				Local $comboSkillIndex = Number($value1) - 1
-				$result = $comboSkillIndex >= 0 And $comboSkillIndex < 8 And TimerDiff($lastSkillCastTimes[$comboSkillIndex]) <= Number($value2)
+				$result = $comboSkillIndex >= 0 And $comboSkillIndex < 8 And TimerDiff($lastSkillCastTimes[$comboSkillIndex]) <= NormalizeAdvancedCombatGateTimeToMilliseconds($value2)
 			EndIf
 		Case 'haseffect'
 			$result = GetHasEffectByName($target, $value1)
@@ -1200,6 +1200,11 @@ Func EvaluateAdvancedCombatGate($gate, $skillSlot, $target, $selfAgent, ByRef $l
 
 	If $gate.Item('not') Then $result = Not $result
 	Return $result
+EndFunc
+
+Func NormalizeAdvancedCombatGateTimeToMilliseconds($timeWindow)
+	If Not IsNumber($timeWindow) Then Return 0
+	Return Number($timeWindow)
 EndFunc
 
 Func PickAdvancedCombatHealTarget($fightRange, $gates, $selfAgent, $skillSlot, ByRef $lastSkillCastTimes)
