@@ -508,6 +508,8 @@ EndFunc
 Func BuildAdvancedCombatSkillSummary($skillConfig)
 	Local $gateSummary = SerializeAdvancedCombatGates($skillConfig.Item('gates'))
 	$gateSummary = StringReplace($gateSummary, @CRLF, ', ')
+	$gateSummary = StringReplace($gateSummary, @LF, ', ')
+	$gateSummary = StringReplace($gateSummary, @CR, ', ')
 	If $gateSummary == '' Then $gateSummary = 'No gates configured'
 	If StringLen($gateSummary) > 95 Then $gateSummary = StringLeft($gateSummary, 92) & '...'
 	Return 'Type: ' & StringLower($skillConfig.Item('type')) & @CRLF & $gateSummary
@@ -531,7 +533,7 @@ Func GuiAdvancedCombatConfigureSkill($skillIndex)
 	Local $comboType = GUICtrlCreateCombo('', 95, 12, 180, 24, BitOR($CBS_DROPDOWNLIST, $WS_VSCROLL))
 	GUICtrlSetData($comboType, 'damage|heal|preparation', StringLower($skillConfig.Item('type')))
 	Local $labelGates = GUICtrlCreateLabel('Conditional gates: GateName(arg1,arg2,...) (separate with comma or newline)', 15, 50, 600, 18)
-	Local $editGates = GUICtrlCreateEdit($gatesText, 15, 72, 530, 92, BitOR($ES_MULTILINE, $ES_WANTRETURN))
+	Local $editGates = GUICtrlCreateEdit($gatesText, 15, 72, 530, 92, BitOR($ES_MULTILINE, $ES_WANTRETURN, $ES_AUTOVSCROLL, $WS_VSCROLL))
 	Local $labelHelp = GUICtrlCreateLabel('Information:' & @CRLF & _	
 	'Here you can configure when and how a skill on your bar should be activated.' & @CRLF & _
 	'The possible skill types are:' & @CRLF & _
