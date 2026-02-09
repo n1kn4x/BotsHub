@@ -1132,9 +1132,9 @@ Func GetAdvancedCombatTarget($me, $fightRange, $currentTarget = Null)
 		If Not EnemyAgentFilter($foe) Then ContinueLoop
 		Local $distance = GetDistance($me, $foe)
 		Local $priorityScore = GetAdvancedCombatTargetPriorityScore($foe, $professionPriority)
-		If	$distance =< $RANGE_SPELLCAST _
+		If	$distance <= $RANGE_SPELLCAST _
 				And $distance < $bestDistance _
-				And $priorityScore =< $bestPriorityScore Then
+				And $priorityScore <= $bestPriorityScore Then
 			$bestDistance = $distance
 			$bestPriorityScore = $priorityScore
 			$bestTarget = $foe
