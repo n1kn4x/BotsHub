@@ -957,6 +957,50 @@ Func GetPlayerName($agent)
 	Local $result = MemoryReadPtr(GetProcessHandle(), $base_address_ptr, $offset, 'wchar[30]')
 	Return $result[1]
 EndFunc
+
+
+;~ Returns NPC entry by NPC/player number.
+;~ Returns Null when the NPC cannot be resolved from the current context.
+Func GetNPCByID($npcID)
+	If $npcID <= 0 Then Return Null
+
+	Local $processHandle = GetProcessHandle()
+	; Depending on build, the NPC table location can slightly vary around the 0x6B* region.
+	Local $npcTableOffsets[8] = [0x6A0, 0x6A8, 0x6B0, 0x6B8, 0x6C0, 0x6C8, 0x6D0, 0x6D8]
+
+	For $tableOffset In $npcTableOffsets
+		Local $offsetPtr[5] = [0, 0x18, 0x2C, $tableOffset, 0]
+		Local $offsetCount[5] = [0, 0x18, 0x2C, $tableOffset + 0x4, 0]
+		Local $npcArrayPtr = MemoryReadPtr($processHandle, $base_address_ptr, $offsetPtr)
+		Local $npcArrayCount = MemoryReadPtr($processHandle, $base_address_ptr, $offsetCount)
+		If $npcArrayPtr[1] == 0 Or $npcArrayCount[1] <= 0 Or $npcArrayCount[1] > 8192 Then ContinueLoop
+
+		For $i = 0 To $npcArrayCount[1] - 1
+			Local $npcStruct = SafeDllStructCreate($NPC_STRUCT_TEMPLATE)
+			SafeDllCall13($kernel_handle, 'int', 'ReadProcessMemory', 'int', $processHandle, 'int', $npcArrayPtr[1] + ($i * DllStructGetSize($npcStruct)), 'ptr', DllStructGetPtr($npcStruct), 'int', DllStructGetSize($npcStruct), 'int', 0)
+			If DllStructGetData($npcStruct, 'ID') == $npcID Then Return $npcStruct
+		Next
+	Next
+
+	Return Null
+EndFunc
+
+
+;~ Returns agent profession from agent data first, then from the NPC table fallback.
+Func GetAgentProfession($agent, $secondary = False)
+	If $agent == Null Then Return 0
+
+	Local $profession = DllStructGetData($agent, $secondary ? 'Secondary' : 'Primary')
+	If $profession <> 0 Then Return $profession
+
+	; NPC fallback: profession is keyed by player number in the NPC table.
+	Local $playerNumber = DllStructGetData($agent, 'TransmogNpcID')
+	If $playerNumber == 0 Then $playerNumber = DllStructGetData($agent, 'LoginNumber')
+	Local $npc = GetNPCByID($playerNumber)
+	If $npc == Null Then Return 0
+
+	Return DllStructGetData($npc, $secondary ? 'Secondary' : 'Primary')
+EndFunc
 #EndRegion Agent
 
 

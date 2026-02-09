@@ -103,6 +103,10 @@ Global Const $ITEM_STRUCT_TEMPLATE = _
 	'ptr ModString;				ptr NameEnc;				ptr NameString;				ptr SingleItemName;'			& _
 	'byte unknown64[8];			short ItemFormula;			byte IsMaterialSalvageable;	byte unknown75;'				& _
 	'short Quantity;			byte Equipped;				byte Profession;			byte Slot;'
+; Some enemies expose profession information only through the NPC table and not through AgentLiving.Primary.
+; This template intentionally only contains the fields needed by GetNPCByID()/GetAgentProfession().
+Global Const $NPC_STRUCT_TEMPLATE = _
+	'dword ID;                    byte unknown004[36];           byte Primary;               byte Secondary;'
 Global Const $QUEST_STRUCT_TEMPLATE = _
 	'long ID;					long LogState;				ptr Location;				ptr Name;					ptr NPC;'		& _
 	'long MapFrom;				float X;					float Y;					long Z;						long unknown1;'	& _

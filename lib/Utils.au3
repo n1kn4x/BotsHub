@@ -1079,7 +1079,7 @@ Func DeserializeAdvancedCombatGates($serializedGates, ByRef $errorMessage)
 EndFunc
 
 Func GetAdvancedCombatProfessionCode($agent)
-	Switch DllStructGetData($agent, 'Primary')
+	Switch GetAgentProfession($agent)
 		Case $ID_MONK
 			Return 'Mo'
 		Case $ID_RITUALIST
