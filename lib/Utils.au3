@@ -1118,35 +1118,55 @@ Func GetAdvancedCombatTargetPriorityScore($target, $professionPriority)
 	Return $professionScore
 EndFunc
 
-Func GetAdvancedCombatTarget($me, $fightRange, $currentTarget = Null)
+Func AdvancedCombatGetHighestPriorityTargetInRange($me, $range)
 	Local $professionPriority = $advanced_combat_config.Item('professionPriority')
-
-	Local $foes = GetFoesInRangeOfAgent($me, $fightRange)
+	Local $foes = GetFoesInRangeOfAgent($me, $range)
 	Local $bestTarget = Null
-	Local $bestDistance = 999999
 	Local $bestPriorityScore = 999999
+	Local $bestDistance = 999999
 
-	; Decide the best next combat target depending on distance and priority score
-	; Select the closest foe with highest priority in spellcasting range.
 	For $foe In $foes
 		If Not EnemyAgentFilter($foe) Then ContinueLoop
 		Local $distance = GetDistance($me, $foe)
+		If $distance > $range Then ContinueLoop
 		Local $priorityScore = GetAdvancedCombatTargetPriorityScore($foe, $professionPriority)
-		If	$distance <= $RANGE_SPELLCAST _
-				And $distance < $bestDistance _
-				And $priorityScore <= $bestPriorityScore Then
-			$bestDistance = $distance
+		If $priorityScore < $bestPriorityScore _
+				Or ($priorityScore == $bestPriorityScore And $distance < $bestDistance) Then
 			$bestPriorityScore = $priorityScore
+			$bestDistance = $distance
 			$bestTarget = $foe
-	; If no enemies in spell casting range, select the closest foe
-		ElseIf	$bestDistance > $RANGE_SPELLCAST
-				And $distance < $bestDistance Then
-					$bestDistance = $distance
-					$bestTarget = $foe
 		EndIf
 	Next
-	
+
 	Return $bestTarget
+EndFunc
+
+Func GetAdvancedCombatPriorityProfessionsInSpellRange($me, $fightRange)
+	Local $professionPriority = $advanced_combat_config.Item('professionPriority')
+	Local $scanRange = $fightRange < $RANGE_SPELLCAST ? $fightRange : $RANGE_SPELLCAST
+	Local $foes = GetFoesInRangeOfAgent($me, $scanRange)
+	Local $professionSummary = ''
+
+	For $foe In $foes
+		If Not EnemyAgentFilter($foe) Then ContinueLoop
+		If GetDistance($me, $foe) > $scanRange Then ContinueLoop
+		Local $professionCode = GetAdvancedCombatProfessionCode($foe)
+		Local $priorityScore = GetAdvancedCombatTargetPriorityScore($foe, $professionPriority)
+		Local $entry = $professionCode & ':' & $priorityScore
+		If StringInStr('|' & $professionSummary & '|', '|' & $entry & '|') == 0 Then
+			If $professionSummary <> '' Then $professionSummary &= '|'
+			$professionSummary &= $entry
+		EndIf
+	Next
+
+	Return $professionSummary == '' ? 'none' : $professionSummary
+EndFunc
+
+Func GetAdvancedCombatTarget($me, $fightRange, $currentTarget = Null)
+	Local $spellRange = $fightRange < $RANGE_SPELLCAST ? $fightRange : $RANGE_SPELLCAST
+	Local $bestTarget = AdvancedCombatGetHighestPriorityTargetInRange($me, $spellRange)
+	If $bestTarget <> Null Then Return $bestTarget
+	Return GetNearestEnemyToAgent($me)
 EndFunc
 
 Func EvaluateAdvancedCombatGate($gate, $skillSlot, $target, $selfAgent, ByRef $lastSkillCastTimes)
@@ -1528,8 +1548,9 @@ Func AdvancedCombatKillFoesInArea($options = $default_moveaggroandkill_options)
 
 	Local $me = GetMyAgent()
 	Local $foesCount = CountFoesInRangeOfAgent($me, $fightRange)
-	Local $target = Null
+	Local $target = AdvancedCombatGetHighestPriorityTargetInRange($me, $fightRange)
 	Local $lastCalledTargetID = 0
+	Local $lastSelectedTargetID = 0
 	Local $lastSkillCastTimes[8]
 	For $i = 0 To 7
 		$lastSkillCastTimes[$i] = TimerInit()
@@ -1558,6 +1579,10 @@ Func AdvancedCombatKillFoesInArea($options = $default_moveaggroandkill_options)
 				And DllStructGetData($target, 'Allegiance') == $ID_ALLEGIANCE_FOE _
 				And GetDistance($me, $target) < $fightRange Then
 			Local $targetID = DllStructGetData($target, 'ID')
+			If $targetID <> $lastSelectedTargetID Then
+				Out('AdvancedCombat target switched to ID=' & $targetID & ' considered spell-range professions/priorities: ' & GetAdvancedCombatPriorityProfessionsInSpellRange($me, $fightRange))
+				$lastSelectedTargetID = $targetID
+			EndIf
 			ChangeTarget($target)
 			If $callTarget And $targetID <> $lastCalledTargetID Then
 				CallTarget($target)
