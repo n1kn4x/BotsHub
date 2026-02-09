@@ -1105,8 +1105,9 @@ Func GetAdvancedCombatProfessionCode($agent)
 EndFunc
 
 Func GetAdvancedCombatTargetPriorityScore($target, $professionPriority)
+	; Profession scores go from 0 to 9, lower number means higher priority
 	Local $professionCode = GetAdvancedCombatProfessionCode($target)
-	Local $professionScore = 999
+	Local $professionScore = 999999
 	For $i = 0 To UBound($professionPriority) - 1
 		If $professionPriority[$i] == $professionCode Then
 			$professionScore = $i
@@ -1120,37 +1121,31 @@ EndFunc
 Func GetAdvancedCombatTarget($me, $fightRange, $currentTarget = Null)
 	Local $professionPriority = $advanced_combat_config.Item('professionPriority')
 
-	; Keep the currently engaged target while it is still valid.
-	; This mirrors the old KillFoesInArea behaviour and avoids pulling into new groups.
-	If $currentTarget <> Null _
-			And DllStructGetData($currentTarget, 'ID') <> 0 _
-			And Not GetIsDead($currentTarget) _
-			And DllStructGetData($currentTarget, 'HealthPercent') > 0 _
-			And DllStructGetData($currentTarget, 'Allegiance') == $ID_ALLEGIANCE_FOE _
-			And GetDistance($me, $currentTarget) < $fightRange Then
-		Return $currentTarget
-	EndIf
-
 	Local $foes = GetFoesInRangeOfAgent($me, $fightRange)
 	Local $bestTarget = Null
 	Local $bestDistance = 999999
 	Local $bestPriorityScore = 999999
 
+	; Decide the best next combat target depending on distance and priority score
+	; Select the closest foe with highest priority in spellcasting range.
 	For $foe In $foes
 		If Not EnemyAgentFilter($foe) Then ContinueLoop
 		Local $distance = GetDistance($me, $foe)
 		Local $priorityScore = GetAdvancedCombatTargetPriorityScore($foe, $professionPriority)
-
-		If $distance < $bestDistance - $RANGE_NEARBY Then
+		If	$distance =< $RANGE_SPELLCAST _
+				And $distance < $bestDistance _
+				And $priorityScore =< $bestPriorityScore Then
 			$bestDistance = $distance
 			$bestPriorityScore = $priorityScore
 			$bestTarget = $foe
-		ElseIf Abs($distance - $bestDistance) <= $RANGE_NEARBY And $priorityScore < $bestPriorityScore Then
-			$bestPriorityScore = $priorityScore
-			$bestTarget = $foe
+	; If no enemies in spell casting range, select the closest foe
+		ElseIf	$bestDistance > $RANGE_SPELLCAST
+				And $distance < $bestDistance Then
+					$bestDistance = $distance
+					$bestTarget = $foe
 		EndIf
 	Next
-
+	
 	Return $bestTarget
 EndFunc
 
@@ -1535,7 +1530,6 @@ Func AdvancedCombatKillFoesInArea($options = $default_moveaggroandkill_options)
 	Local $foesCount = CountFoesInRangeOfAgent($me, $fightRange)
 	Local $target = Null
 	Local $lastCalledTargetID = 0
-	Local $retargetTimer = TimerInit()
 	Local $lastSkillCastTimes[8]
 	For $i = 0 To 7
 		$lastSkillCastTimes[$i] = TimerInit()
@@ -1548,14 +1542,13 @@ Func AdvancedCombatKillFoesInArea($options = $default_moveaggroandkill_options)
 			$target = GetAgentByID(DllStructGetData($target, 'ID'))
 		EndIf
 
-		If TimerDiff($retargetTimer) >= 1000 _
-				Or $target == Null _
+		; Keep the currently engaged target while it is still valid.
+		If  $target == Null _
 				Or GetIsDead($target) _
 				Or DllStructGetData($target, 'HealthPercent') <= 0 _
 				Or DllStructGetData($target, 'Allegiance') <> $ID_ALLEGIANCE_FOE _
 				Or GetIsDead(GetCurrentTarget()) Then
 			$target = GetAdvancedCombatTarget($me, $fightRange, $target)
-			$retargetTimer = TimerInit()
 		EndIf
 		If IsPlayerAlive() _
 				And $target <> Null _
