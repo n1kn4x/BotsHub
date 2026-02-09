@@ -899,18 +899,11 @@ EndFunc
 
 
 #Region Map Clearing Utilities
-Global Const $ADVANCED_COMBAT_PROFESSION_ORDER_DEFAULT[10] = ['Mo', 'Rt', 'E', 'Me', 'N', 'A', 'W', 'P', 'D', 'R']
-
 Global $advanced_combat_config = CreateDefaultAdvancedCombatConfig()
 
 Func CreateDefaultAdvancedCombatConfig()
 	Local $config = ObjCreate('Scripting.Dictionary')
 	$config.Add('enabled', False)
-	Local $professionOrder[UBound($ADVANCED_COMBAT_PROFESSION_ORDER_DEFAULT)]
-	For $i = 0 To UBound($ADVANCED_COMBAT_PROFESSION_ORDER_DEFAULT) - 1
-		$professionOrder[$i] = $ADVANCED_COMBAT_PROFESSION_ORDER_DEFAULT[$i]
-	Next
-	$config.Add('professionPriority', $professionOrder)
 	Local $skills[8]
 	For $i = 0 To 7
 		$skills[$i] = ObjCreate('Scripting.Dictionary')
@@ -1078,75 +1071,26 @@ Func DeserializeAdvancedCombatGates($serializedGates, ByRef $errorMessage)
 	Return $gates
 EndFunc
 
-Func GetAdvancedCombatProfessionCode($agent)
-	Switch DllStructGetData($agent, 'Primary')
-		Case $ID_MONK
-			Return 'Mo'
-		Case $ID_RITUALIST
-			Return 'Rt'
-		Case $ID_ELEMENTALIST
-			Return 'E'
-		Case $ID_MESMER
-			Return 'Me'
-		Case $ID_NECROMANCER
-			Return 'N'
-		Case $ID_ASSASSIN
-			Return 'A'
-		Case $ID_WARRIOR
-			Return 'W'
-		Case $ID_PARAGON
-			Return 'P'
-		Case $ID_DERVISH
-			Return 'D'
-		Case $ID_RANGER
-			Return 'R'
-	EndSwitch
-	Return 'R'
-EndFunc
-
-Func GetAdvancedCombatTargetPriorityScore($target, $professionPriority)
-	; Profession scores go from 0 to 9, lower number means higher priority
-	Local $professionCode = GetAdvancedCombatProfessionCode($target)
-	Local $professionScore = 999999
-	For $i = 0 To UBound($professionPriority) - 1
-		If $professionPriority[$i] == $professionCode Then
-			$professionScore = $i
-			ExitLoop
-		EndIf
-	Next
-	; Lower index means higher priority (top of profession list is attacked first).
-	Return $professionScore
-EndFunc
-
 Func GetAdvancedCombatTarget($me, $fightRange, $currentTarget = Null)
-	Local $professionPriority = $advanced_combat_config.Item('professionPriority')
-
 	Local $foes = GetFoesInRangeOfAgent($me, $fightRange)
+	If Not IsArray($foes) Then Return $currentTarget
+
 	Local $bestTarget = Null
 	Local $bestDistance = 999999
-	Local $bestPriorityScore = 999999
 
-	; Decide the best next combat target depending on distance and priority score
-	; Select the closest foe with highest priority in spellcasting range.
+	; Best-effort resilient targeting: pick the closest valid foe.
 	For $foe In $foes
-		If Not EnemyAgentFilter($foe) Then ContinueLoop
+		If $foe == Null Or Not EnemyAgentFilter($foe) Then ContinueLoop
 		Local $distance = GetDistance($me, $foe)
-		Local $priorityScore = GetAdvancedCombatTargetPriorityScore($foe, $professionPriority)
-		If	$distance <= $RANGE_SPELLCAST _
-				And $distance < $bestDistance _
-				And $priorityScore <= $bestPriorityScore Then
+		If $distance <= 0 Then ContinueLoop
+		If $distance < $bestDistance Then
 			$bestDistance = $distance
-			$bestPriorityScore = $priorityScore
 			$bestTarget = $foe
-	; If no enemies in spell casting range, select the closest foe
-		ElseIf	$bestDistance > $RANGE_SPELLCAST
-				And $distance < $bestDistance Then
-					$bestDistance = $distance
-					$bestTarget = $foe
 		EndIf
 	Next
-	
-	Return $bestTarget
+
+	If $bestTarget <> Null Then Return $bestTarget
+	Return $currentTarget
 EndFunc
 
 Func EvaluateAdvancedCombatGate($gate, $skillSlot, $target, $selfAgent, ByRef $lastSkillCastTimes)
