@@ -1180,9 +1180,11 @@ Func GetAdvancedCombatPriorityProfessionsInSpellRange($me, $fightRange)
 	For $foe In $foes
 		If Not EnemyAgentFilter($foe) Then ContinueLoop
 		If GetDistance($me, $foe) > $scanRange Then ContinueLoop
+		Local $primary = DllStructGetData($foe, 'Primary')
+		Local $secondary = DllStructGetData($foe, 'Secondary')
 		Local $professionCode = GetAdvancedCombatProfessionCode($foe)
 		Local $priorityScore = GetAdvancedCombatTargetPriorityScore($foe, $professionPriority)
-		Local $entry = $professionCode & ':' & $priorityScore
+		Local $entry = $professionCode & ':' & $priorityScore & '(p=' & $primary & ',s=' & $secondary & ')'
 		If StringInStr('|' & $professionSummary & '|', '|' & $entry & '|') == 0 Then
 			If $professionSummary <> '' Then $professionSummary &= '|'
 			$professionSummary &= $entry
