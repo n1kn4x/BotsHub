@@ -1079,7 +1079,10 @@ Func DeserializeAdvancedCombatGates($serializedGates, ByRef $errorMessage)
 EndFunc
 
 Func GetAdvancedCombatProfessionCode($agent)
-	Switch DllStructGetData($agent, 'Primary')
+	Local $primary = DllStructGetData($agent, 'Primary')
+	Local $secondary = DllStructGetData($agent, 'Secondary')
+
+	Switch $primary
 		Case $ID_MONK
 			Return 'Mo'
 		Case $ID_RITUALIST
@@ -1101,13 +1104,40 @@ Func GetAdvancedCombatProfessionCode($agent)
 		Case $ID_RANGER
 			Return 'R'
 	EndSwitch
-	Return 'R'
+
+	; Many PvE foes have unknown primary (0). Fall back to secondary before giving up.
+	Switch $secondary
+		Case $ID_MONK
+			Return 'Mo'
+		Case $ID_RITUALIST
+			Return 'Rt'
+		Case $ID_ELEMENTALIST
+			Return 'E'
+		Case $ID_MESMER
+			Return 'Me'
+		Case $ID_NECROMANCER
+			Return 'N'
+		Case $ID_ASSASSIN
+			Return 'A'
+		Case $ID_WARRIOR
+			Return 'W'
+		Case $ID_PARAGON
+			Return 'P'
+		Case $ID_DERVISH
+			Return 'D'
+		Case $ID_RANGER
+			Return 'R'
+	EndSwitch
+
+	; Unknown profession data should not be forced to Ranger.
+	Return 'U'
 EndFunc
 
 Func GetAdvancedCombatTargetPriorityScore($target, $professionPriority)
 	; Profession scores go from 0 to 9, lower number means higher priority
 	Local $professionCode = GetAdvancedCombatProfessionCode($target)
 	Local $professionScore = 999999
+	If $professionCode == 'U' Then Return $professionScore
 	For $i = 0 To UBound($professionPriority) - 1
 		If $professionPriority[$i] == $professionCode Then
 			$professionScore = $i
