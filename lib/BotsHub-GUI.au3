@@ -543,8 +543,9 @@ Func GuiAdvancedCombatConfigureSkill($skillIndex)
 	'- IsPartyMember(): the target must be a party member (no minions or other NPCs). Example: IsPartyMember()' & @CRLF & _
 	'- IsSelf(): the target must be the playable character. Example: IsSelf()' & @CRLF & _
 	'' & @CRLF & _
-	'Prepartion skill conditional gates:' & @CRLF & _
-	'- NotAffectedBySkill(effectName): the playable character must not be under effectName. Example: NotAffectedBySkill(Shadow Form)' & @CRLF & _
+	'Preparation skill conditional gates:' & @CRLF & _
+	'- Cooldown(cooldownMs): a time interval cooldownMs milliseconds needs to pass before that skill is used again. Example: Cooldown(5000)' & @CRLF & _
+	'- NotAffectedBySkill(skillBarPosition): the playable character must not be under the effect of the skill in that bar position (1-8). Example: NotAffectedBySkill(1)' & @CRLF & _
 	'' & @CRLF & _
 	'Possible values for effectName are: conditioned, bleeding, crippled, dead, deepwounded, poisoned, enchanted, degenhexed, hexed, weaponspelled.', _
 	15, 172, 600, 550)
