@@ -1142,8 +1142,6 @@ Func EvaluateAdvancedCombatGate($gate, $skillSlot, $target, $selfAgent, ByRef $l
 			$result = DllStructGetData($target, 'Allegiance') == $ID_ALLEGIANCE_TEAM
 		Case 'isself'
 			$result = DllStructGetData($target, 'ID') == DllStructGetData($selfAgent, 'ID')
-		Case 'notaffectedbyskill'
-			$result = GetHasEffectByName($selfAgent, $value1) == False
 	EndSwitch
 
 	If $gate.Item('not') Then $result = Not $result
