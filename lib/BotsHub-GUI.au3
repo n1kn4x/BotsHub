@@ -491,7 +491,7 @@ EndFunc
 Func BuildAdvancedCombatSkillSummary($skillConfig)
 	Local $gateSummary = SerializeAdvancedCombatGates($skillConfig.Item('gates'))
 	$gateSummary = StringReplace($gateSummary, @CRLF, ', ')
-	If $gateSummary == '' Then $gateSummary = 'No gates configured'
+	If $gateSummary == '' Then Return 'Type: ' & StringLower($skillConfig.Item('type'))
 	If StringLen($gateSummary) > 50 Then $gateSummary = StringLeft($gateSummary, 50) & '...'
 	Return 'Type: ' & StringLower($skillConfig.Item('type')) & ' | Gates: ' & $gateSummary
 EndFunc
