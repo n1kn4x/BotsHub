@@ -1142,6 +1142,18 @@ Func EvaluateAdvancedCombatGate($gate, $skillSlot, $target, $selfAgent, ByRef $l
 			$result = DllStructGetData($target, 'Allegiance') == $ID_ALLEGIANCE_TEAM
 		Case 'isself'
 			$result = DllStructGetData($target, 'ID') == DllStructGetData($selfAgent, 'ID')
+		Case 'notaffectedbyskill'
+			If TryParseAdvancedCombatGateNumber($value1, $numericValue1) Then
+				Local $skillBarSlot = Int($numericValue1)
+				If $skillBarSlot >= 1 And $skillBarSlot <= 8 Then
+					Local $skillId = GetSkillbarSkillID($skillBarSlot)
+					$result = $skillId > 0 And GetEffectTimeRemaining($skillId) == 0
+				Else
+					$result = False
+				EndIf
+			Else
+				$result = False
+			EndIf
 	EndSwitch
 
 	If $gate.Item('not') Then $result = Not $result
