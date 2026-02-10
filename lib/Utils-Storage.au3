@@ -347,24 +347,8 @@ Func DefaultShouldPickItem($item)
 		Return $cache['Pick up items.Festival Items.' & $festivalDropName]
 	; --------------------------------------- Trophies ---------------------------------------
 	ElseIf IsTrophy($itemID) Then
-		; TODO: replace this by a map from ID to trophy name
-		Switch $itemID
-			Case $ID_MINISTERIAL_COMMENDATION
-				Return True
-			Case $ID_GLACIAL_STONE
-				Return $cache['Pick up items.Trophies.Glacial Stone']
-			Case $ID_DESTROYER_CORE
-				Return $cache['Pick up items.Trophies.Destroyer Core']
-			Case $ID_JADE_BRACELET
-				Return $cache['Pick up items.Trophies.Jade Bracelet']
-			Case $ID_STOLEN_GOODS
-				Return $cache['Pick up items.Trophies.Stolen Goods']
-			Case $ID_DARK_REMAINS
-				Return $cache['Pick up items.Trophies.Dark Remains']
-			Case $ID_DEMONIC_REMAINS
-				Return $cache['Pick up items.Trophies.Demonic Remains']
-		EndSwitch
-		Return $cache['Pick up items.Trophies']
+		If $MAP_FARMED_TROPHIES[$itemID] <> Null Then Return $cache['Pick up items.Trophies.' & $FARMED_TROPHIES_NAMES_FROM_ID[$itemID]]
+		Return $cache['Pick up items.Trophies.Other trophies']
 	; -------------------------------------- Materials --------------------------------------
 	ElseIf IsBasicMaterial($item) Then
 		Local $materialName = $BASIC_MATERIAL_NAMES_FROM_IDS[$itemID]
@@ -418,7 +402,6 @@ Func DefaultShouldSalvageItem($item)
 
 	Local $itemID = DllStructGetData($item, 'ModelID')
 	Local $rarity = GetRarity($item)
-
 	If $rarity == $RARITY_GREEN Then
 		Return False
 	; --------------------------------------- Weapons ---------------------------------------
@@ -435,25 +418,15 @@ Func DefaultShouldSalvageItem($item)
 		Return IsIdentified($item) And Not ContainsValuableUpgrades($item)
 	; --------------------------------------- Trophies ---------------------------------------
 	ElseIf IsTrophy($itemID) Then
-		If $cache['Salvage items.Trophies'] Then Return True
-		If $cache['@salvage.trophies.nothing'] Then Return False
-		; TODO: replace this by a map from ID to trophy name
-		Switch $itemID
-			Case $ID_GLACIAL_STONE
-				Return $cache['Salvage items.Trophies.Glacial Stone']
-			Case $ID_DESTROYER_CORE
-				Return $cache['Salvage items.Trophies.Destroyer Core']
-			Case $ID_JADE_BRACELET
-				Return $cache['Salvage items.Trophies.Jade Bracelet']
-			Case $ID_STOLEN_GOODS
-				Return $cache['Salvage items.Trophies.Stolen Goods']
-			Case $ID_DARK_REMAINS
-				Return $cache['Salvage items.Trophies.Dark Remains']
-			Case $ID_DEMONIC_REMAINS
-				Return $cache['Salvage items.Trophies.Demonic Remains']
-		EndSwitch
-		;Return $cache['Salvage items.Trophies.Other trophies']
-
+		If $MAP_FARMED_TROPHIES[$itemID] <> Null Then 
+			Local $shouldSalvage = $cache['Salvage items.Trophies.' & $FARMED_TROPHIES_NAMES_FROM_ID[$itemID]]
+			Return $shouldSalvage == Null ? False : $shouldSalvage
+		EndIf
+		; Don't salvage Nick items and items that salvage into rare materials
+		If $MAP_NICHOLAS_ITEMS[$itemID] <> Null Then Return False
+		; - FIXME: salvage once we can salvage with higher salvage kit
+		If $MAP_RARE_MATERIALS_TROPHIES[$itemID] <> Null Then Return False
+		; Salvage items that salvage into feathers, dust, bones and fiber
 		If $MAP_FEATHER_TROPHIES[$itemID] <> Null Then Return True
 		If $MAP_DUST_TROPHIES[$itemID] <> Null Then Return True
 		If $MAP_BONES_TROPHIES[$itemID] <> Null Then Return True
@@ -477,7 +450,9 @@ Func DefaultShouldSellItem($item)
 	Local $itemID = DllStructGetData(($item), 'ModelID')
 	Local $rarity = GetRarity($item)
 
-	If $rarity == $RARITY_GREEN Then
+	If DllStructGetData($item, 'Value') == 0 Then
+		Return False
+	ElseIf $rarity == $RARITY_GREEN Then
 		Return False
 	; --------------------------------------- Weapons ---------------------------------------
 	ElseIf IsWeapon($item) Then
@@ -490,6 +465,23 @@ Func DefaultShouldSellItem($item)
 		Local $rarityName = $RARITY_NAMES_FROM_IDS[$rarity]
 		If Not $cache['Sell items.Armor salvageables.' & $rarityName] Then Return False
 		Return IsIdentified($item) And Not ContainsValuableUpgrades($item)
+	; --------------------------------------- Trophies ---------------------------------------
+	ElseIf IsTrophy($itemID) Then
+		If $MAP_FARMED_TROPHIES[$itemID] <> Null Then 
+			Local $shouldSell = $cache['Sell items.Trophies.' & $FARMED_TROPHIES_NAMES_FROM_ID[$itemID]]
+			Return $shouldSell == Null ? False : $shouldSell
+		EndIf
+		; Do not sell Nick items and items that salvage into rare materials
+		Out($itemID)
+		If $MAP_NICHOLAS_ITEMS[$itemID] <> Null Then Return False
+		If $MAP_RARE_MATERIALS_TROPHIES[$itemID] <> Null Then Return False
+		; Do not sell items that salvage into feathers, dust, bones and fiber
+		If $MAP_FEATHER_TROPHIES[$itemID] <> Null Then Return False
+		If $MAP_DUST_TROPHIES[$itemID] <> Null Then Return False
+		If $MAP_BONES_TROPHIES[$itemID] <> Null Then Return False
+		If $MAP_FIBER_TROPHIES[$itemID] <> Null Then Return False
+		; Sell the rest - FIXME: disabled until we have all IDs
+		Return True
 	; --------------------------------------- Scrolls ---------------------------------------
 	ElseIf IsBlueScroll($itemID) Then
 		Return $cache['Sell items.Scrolls.Blue']
@@ -534,6 +526,7 @@ Func DefaultShouldStoreItem($item)
 		Return $cache['Store items.Festival Items.' & $festivalDropName]
 	; --------------------------------------- Trophies ---------------------------------------
 	ElseIf IsTrophy($itemID) Then
+		If $MAP_FARMED_TROPHIES[$itemID] <> Null Then Return $cache['Store items.Trophies.' & $FARMED_TROPHIES_NAMES_FROM_ID[$itemID]]
 		If $quantity <> 250 Then Return False
 		Return True
 	; -------------------------------------- Materials --------------------------------------
@@ -1608,7 +1601,7 @@ EndFunc
 
 ;~ Find first empty slot in bags from firstBag to lastBag
 Func FindFirstEmptySlot($firstBag, $lastBag)
-	Local $bagEmptySlot[2] = [0, 0]
+	Local $bagEmptySlot[] = [0, 0]
 	For $i = $firstBag To $lastBag
 		$bagEmptySlot[1] = FindEmptySlot($i)
 		If $bagEmptySlot[1] <> 0 Then
@@ -1829,7 +1822,7 @@ EndFunc
 ;~ Look for an item in storages from firstBag to lastBag and return bag and slot of the item, [0, 0] else (bags and slots are indexed from 1 as in GWToolbox)
 Func FindInStorages($firstBag, $lastBag, $itemID)
 	Local $item
-	Local $itemBagAndSlot[2] = [0, 0]
+	Local $itemBagAndSlot[] = [0, 0]
 
 	For $bagIndex = $firstBag To $lastBag
 		Local $bag = GetBag($bagIndex)
@@ -2175,6 +2168,12 @@ EndFunc
 ;~ Return true if the item is an everlasting tonic
 Func IsEverlastingTonic($itemID)
 	Return $MAP_EL_TONICS[$itemID] <> Null
+EndFunc
+
+
+;~ Return true if the item is a reward trophy
+Func IsRewardTrophy($itemID)
+	Return $MAP_REWARD_TROPHIES[$itemID] <> Null
 EndFunc
 
 
@@ -2555,7 +2554,7 @@ EndFunc
 ;~ Auto fill the items mods based on the known modstructs
 Func CompleteItemsMods($batchID)
 	Info('Completing items mods')
-	Local $upgradeTypes[3] = ['prefix', 'suffix', 'inscription']
+	Local $upgradeTypes[] = ['prefix', 'suffix', 'inscription']
 	Local $query
 	For $upgradeType In $upgradeTypes
 		$query = 'UPDATE ' & $TABLE_DATA_USER & @CRLF _
@@ -2612,7 +2611,7 @@ EndFunc
 ;~ Complete mods data by cross-comparing all modstructs from items that have the same mods and deduce the mod hexa from it
 Func CompleteUpgradeLookupTable()
 	Info('Completing upgrade lookup')
-	Local $modTypes[3] = ['prefix', 'suffix', 'inscription']
+	Local $modTypes[] = ['prefix', 'suffix', 'inscription']
 	For $upgradeType In $modTypes
 		InsertNewUpgrades($upgradeType)
 		UpdateNewUpgrades($upgradeType)
