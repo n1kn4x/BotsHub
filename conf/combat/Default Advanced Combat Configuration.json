@@ -1,0 +1,37 @@
+{
+	"enabled": false,
+	"skills": {
+		"1": {
+			"type": "damage",
+			"gates": ""
+		},
+		"2": {
+			"type": "damage",
+			"gates": ""
+		},
+		"3": {
+			"type": "damage",
+			"gates": ""
+		},
+		"4": {
+			"type": "damage",
+			"gates": ""
+		},
+		"5": {
+			"type": "damage",
+			"gates": ""
+		},
+		"6": {
+			"type": "damage",
+			"gates": ""
+		},
+		"7": {
+			"type": "damage",
+			"gates": ""
+		},
+		"8": {
+			"type": "damage",
+			"gates": ""
+		}
+	}
+}

@@ -596,7 +596,7 @@ Func GuiAdvancedCombatHandler()
 			$advanced_combat_config.Item('enabled') = GUICtrlRead($gui_checkbox_advancedcombat_enabled) == $GUI_CHECKED
 			RefreshAdvancedCombatMode()
 		Case $gui_button_advancedcombat_save
-			Local $filePath = FileSaveDialog('', @ScriptDir & '\conf\advancedcombat', '(*.json)')
+			Local $filePath = FileSaveDialog('', @ScriptDir & '\conf\combat', '(*.json)')
 			If @error Then Return
 			Local $jsonObject = _JSON_Parse('{}')
 			_JSON_addChangeDelete($jsonObject, 'enabled', $advanced_combat_config.Item('enabled'))
@@ -609,7 +609,7 @@ Func GuiAdvancedCombatHandler()
 			FileWrite($handle, _JSON_Generate($jsonObject))
 			FileClose($handle)
 		Case $gui_button_advancedcombat_load
-			Local $filePath = FileOpenDialog('Load advanced combat configuration', @ScriptDir & '\conf\advancedcombat', '(*.json)')
+			Local $filePath = FileOpenDialog('Load advanced combat configuration', @ScriptDir & '\conf\combat', '(*.json)')
 			If @error Then Return
 			Local $handle = FileOpen($filePath, $FO_READ + $FO_UTF8)
 			Local $jsonObject = _JSON_Parse(FileRead($handle))
