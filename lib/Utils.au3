@@ -899,331 +899,6 @@ EndFunc
 
 
 #Region Map Clearing Utilities
-Global $advanced_combat_config = CreateDefaultAdvancedCombatConfig()
-
-Func CreateDefaultAdvancedCombatConfig()
-	Local $config = ObjCreate('Scripting.Dictionary')
-	$config.Add('enabled', False)
-	Local $skills[8]
-	For $i = 0 To 7
-		$skills[$i] = ObjCreate('Scripting.Dictionary')
-		$skills[$i].Add('type', 'damage')
-		Local $gates[0]
-		$skills[$i].Add('gates', $gates)
-	Next
-	$config.Add('skills', $skills)
-	Return $config
-EndFunc
-
-Func SerializeAdvancedCombatGate($gate)
-	Local $gateType = $gate.Item('type')
-	Local $args[0]
-	If $gate.Item('not') Then
-		ReDim $args[UBound($args) + 1]
-		$args[UBound($args) - 1] = 'not'
-	EndIf
-	Local $value1 = StringStripWS($gate.Item('value1'), 3)
-	Local $value2 = StringStripWS($gate.Item('value2'), 3)
-	If $value1 <> '' Then
-		ReDim $args[UBound($args) + 1]
-		$args[UBound($args) - 1] = $value1
-	EndIf
-	If $value2 <> '' Then
-		ReDim $args[UBound($args) + 1]
-		$args[UBound($args) - 1] = $value2
-	EndIf
-	Local $serialized = $gateType & '('
-	For $i = 0 To UBound($args) - 1
-		If $i > 0 Then $serialized &= ','
-		$serialized &= $args[$i]
-	Next
-	Return $serialized & ')'
-EndFunc
-
-Func DeserializeAdvancedCombatGate($serializedGate, ByRef $errorMessage)
-	Local $line = StringStripWS($serializedGate, 3)
-	If $line == '' Then Return Null
-	Local $openParen = StringInStr($line, '(', 0, 1)
-	Local $closeParen = StringInStr($line, ')', 0, -1)
-	If $openParen <= 1 Or $closeParen <= $openParen Or $closeParen <> StringLen($line) Then
-		$errorMessage = 'Invalid gate syntax: "' & $line & '". Expected GateName(arg1,arg2).'
-		Return Null
-	EndIf
-
-	Local $gateType = StringStripWS(StringLeft($line, $openParen - 1), 3)
-	If $gateType == '' Then
-		$errorMessage = 'Missing gate name in line: "' & $line & '".'
-		Return Null
-	EndIf
-
-	Local $argsRaw = StringMid($line, $openParen + 1, $closeParen - $openParen - 1)
-	Local $args[0]
-	If StringStripWS($argsRaw, 3) <> '' Then
-		Local $tokens = StringSplit($argsRaw, ',', $STR_NOCOUNT)
-		For $token In $tokens
-			$token = StringStripWS($token, 3)
-			If $token == '' Then
-				$errorMessage = 'Invalid empty argument in line: "' & $line & '".'
-				Return Null
-			EndIf
-			ReDim $args[UBound($args) + 1]
-			$args[UBound($args) - 1] = $token
-		Next
-	EndIf
-
-	Local $gate = ObjCreate('Scripting.Dictionary')
-	$gate.Add('type', $gateType)
-	$gate.Add('not', False)
-	$gate.Add('value1', '')
-	$gate.Add('value2', '')
-
-	Local $argIndex = 0
-	If UBound($args) > 0 And StringLower($args[0]) == 'not' Then
-		$gate.Item('not') = True
-		$argIndex = 1
-	EndIf
-	If UBound($args) > $argIndex Then $gate.Item('value1') = $args[$argIndex]
-	If UBound($args) > ($argIndex + 1) Then $gate.Item('value2') = $args[$argIndex + 1]
-	If UBound($args) > ($argIndex + 2) Then
-		$errorMessage = 'Too many arguments in line: "' & $line & '".'
-		Return Null
-	EndIf
-
-	Return $gate
-EndFunc
-
-Func SerializeAdvancedCombatGates($gates)
-	If Not IsArray($gates) Or UBound($gates) == 0 Then Return ''
-	Local $out = ''
-	For $i = 0 To UBound($gates) - 1
-		If $i > 0 Then $out &= @CRLF
-		$out &= SerializeAdvancedCombatGate($gates[$i])
-	Next
-	Return $out
-EndFunc
-
-Func DeserializeAdvancedCombatGates($serializedGates, ByRef $errorMessage)
-	$errorMessage = ''
-	If $serializedGates == '' Or $serializedGates == Null Then
-		Local $empty[0]
-		Return $empty
-	EndIf
-
-	Local $normalized = StringStripCR($serializedGates)
-	Local $entries[0]
-	Local $current = ''
-	Local $parenDepth = 0
-
-	For $i = 1 To StringLen($normalized)
-		Local $char = StringMid($normalized, $i, 1)
-		Switch $char
-			Case '('
-				$parenDepth += 1
-				$current &= $char
-			Case ')'
-				$parenDepth -= 1
-				If $parenDepth < 0 Then
-					$errorMessage = 'Invalid gate syntax: unexpected closing parenthesis.'
-					Local $empty[0]
-					Return $empty
-				EndIf
-				$current &= $char
-			Case ',', @LF
-				If $parenDepth == 0 Then
-					Local $entry = StringStripWS($current, 3)
-					If $entry <> '' Then
-						ReDim $entries[UBound($entries) + 1]
-						$entries[UBound($entries) - 1] = $entry
-					EndIf
-					$current = ''
-				Else
-					$current &= $char
-				EndIf
-			Case Else
-				$current &= $char
-		EndSwitch
-	Next
-
-	If $parenDepth <> 0 Then
-		$errorMessage = 'Invalid gate syntax: missing closing parenthesis.'
-		Local $empty[0]
-		Return $empty
-	EndIf
-
-	Local $tailEntry = StringStripWS($current, 3)
-	If $tailEntry <> '' Then
-		ReDim $entries[UBound($entries) + 1]
-		$entries[UBound($entries) - 1] = $tailEntry
-	EndIf
-
-	Local $gates[0]
-	For $index = 0 To UBound($entries) - 1
-		Local $lineError = ''
-		Local $gate = DeserializeAdvancedCombatGate($entries[$index], $lineError)
-		If $gate == Null Then
-			$errorMessage = 'Invalid gate at entry ' & ($index + 1) & ': ' & $lineError
-			Local $empty[0]
-			Return $empty
-		EndIf
-		ReDim $gates[UBound($gates) + 1]
-		$gates[UBound($gates) - 1] = $gate
-	Next
-	Return $gates
-EndFunc
-
-Func GetAdvancedCombatTarget($me, $fightRange, $currentTarget = Null)
-	Local $foes = GetFoesInRangeOfAgent($me, $fightRange)
-	If Not IsArray($foes) Then Return $currentTarget
-
-	Local $bestTarget = Null
-	Local $bestDistance = 999999
-
-	; Best-effort resilient targeting: pick the closest valid foe.
-	For $foe In $foes
-		If $foe == Null Or Not EnemyAgentFilter($foe) Then ContinueLoop
-		Local $distance = GetDistance($me, $foe)
-		If $distance <= 0 Then ContinueLoop
-		If $distance < $bestDistance Then
-			$bestDistance = $distance
-			$bestTarget = $foe
-		EndIf
-	Next
-
-	If $bestTarget <> Null Then Return $bestTarget
-	Return $currentTarget
-EndFunc
-
-Func EvaluateAdvancedCombatGate($gate, $skillSlot, $target, $selfAgent, ByRef $lastSkillCastTimes)
-	Local $gateType = StringLower($gate.Item('type'))
-	Local $value1 = $gate.Item('value1')
-	Local $value2 = $gate.Item('value2')
-	Local $result = True
-	Local $numericValue1 = 0
-	Local $numericValue2 = 0
-
-	Switch $gateType
-		Case 'cooldown'
-			If Not TryParseAdvancedCombatGateNumber($value1, $numericValue1) Or $numericValue1 <= 0 Then
-				$result = True
-			Else
-				$result = TimerDiff($lastSkillCastTimes[$skillSlot - 1]) >= $numericValue1
-			EndIf
-		Case 'distancetotarget'
-			$result = GetDistance($selfAgent, $target) > Number($value1)
-		Case 'effectsoftarget'
-			$result = GetHasEffectByName($target, $value1)
-		Case 'effectsofself'
-			$result = GetHasEffectByName($selfAgent, $value1)
-		Case 'iskd'
-			$result = GetIsKnocked($target)
-		Case 'healthbelow'
-			$result = DllStructGetData($target, 'HealthPercent') * 100 < Number($value1)
-		Case 'daggerstatus'
-			Switch StringLower($value1)
-				Case 'lead attack'
-					$result = GetHasLeadAttackStatus($target)
-				Case 'offhand attack'
-					$result = GetHasOffhandAttackStatus($target)
-				Case 'dual attack'
-					$result = GetHasDualAttackStatus($target)
-				Case Else
-					$result = False
-			EndSwitch
-		Case 'combo'
-			If Not TryParseAdvancedCombatGateNumber($value1, $numericValue1) Or Not TryParseAdvancedCombatGateNumber($value2, $numericValue2) Then
-				$result = False
-			Else
-				Local $comboSkillIndex = Int($numericValue1) - 1
-				$result = $comboSkillIndex >= 0 And $comboSkillIndex < 8 And TimerDiff($lastSkillCastTimes[$comboSkillIndex]) <= $numericValue2
-			EndIf
-		Case 'haseffect'
-			$result = GetHasEffectByName($target, $value1)
-		Case 'ispartymember'
-			$result = DllStructGetData($target, 'Allegiance') == $ID_ALLEGIANCE_TEAM
-		Case 'isself'
-			$result = DllStructGetData($target, 'ID') == DllStructGetData($selfAgent, 'ID')
-		Case 'notaffectedbyskill'
-			If TryParseAdvancedCombatGateNumber($value1, $numericValue1) Then
-				Local $skillBarSlot = Int($numericValue1)
-				If $skillBarSlot >= 1 And $skillBarSlot <= 8 Then
-					Local $skillId = GetSkillbarSkillID($skillBarSlot)
-					$result = $skillId > 0 And GetEffectTimeRemaining($skillId) == 0
-				Else
-					$result = False
-				EndIf
-			Else
-				$result = False
-			EndIf
-	EndSwitch
-
-	If $gate.Item('not') Then $result = Not $result
-	Return $result
-EndFunc
-
-Func TryParseAdvancedCombatGateNumber($rawValue, ByRef $parsedValue)
-	$parsedValue = 0
-	Local $normalized = StringStripWS($rawValue, 3)
-	If $normalized == '' Then Return False
-	If StringRegExp($normalized, '^[+-]?(?:\d+\.?\d*|\.\d+)$') == 0 Then Return False
-	$parsedValue = Number($normalized)
-	Return True
-EndFunc
-
-Func PickAdvancedCombatHealTarget($fightRange, $gates, $selfAgent, $skillSlot, ByRef $lastSkillCastTimes)
-	Local $allies = GetAgentArray($ID_AGENT_TYPE_NPC)
-	Local $best = Null
-	Local $lowestHp = 2.0
-	For $ally In $allies
-		If DllStructGetData($ally, 'Allegiance') <> $ID_ALLEGIANCE_TEAM Then ContinueLoop
-		If GetDistance($selfAgent, $ally) > $fightRange Then ContinueLoop
-		If GetIsDead($ally) Then ContinueLoop
-		Local $allGatesPass = True
-		For $gate In $gates
-			If Not EvaluateAdvancedCombatGate($gate, $skillSlot, $ally, $selfAgent, $lastSkillCastTimes) Then
-				$allGatesPass = False
-				ExitLoop
-			EndIf
-		Next
-		If $allGatesPass And DllStructGetData($ally, 'HealthPercent') < $lowestHp Then
-			$best = $ally
-			$lowestHp = DllStructGetData($ally, 'HealthPercent')
-		EndIf
-	Next
-	Return $best
-EndFunc
-
-
-Func CloneAdvancedCombatProfessionPriority($source)
-	Local $copied[UBound($source)]
-	For $i = 0 To UBound($source) - 1
-		$copied[$i] = $source[$i]
-	Next
-	Return $copied
-EndFunc
-
-Func IsAdvancedCombatSkillReady($skillSlot, $skillsCostMap)
-	Local $skillBarSlot = $skillSlot + 1
-	Local $sufficientEnergy = $skillsCostMap == Null ? True : (GetEnergy() >= $skillsCostMap[$skillSlot])
-	Local $skill = GetSkillByID(GetSkillbarSkillID($skillBarSlot))
-	Local $requiredAdrenaline = DllStructGetData($skill, 'Adrenaline')
-	Local $sufficientAdrenaline = $requiredAdrenaline <= 0 Or GetSkillbarSkillAdrenaline($skillBarSlot) >= $requiredAdrenaline
-	Return $sufficientEnergy And $sufficientAdrenaline And IsRecharged($skillBarSlot)
-EndFunc
-
-Func ShouldUseAdvancedCombatSkill($skillSlot, $skillConfig, $target, $selfAgent, $fightRange, ByRef $lastSkillCastTimes)
-	Local $skillType = StringLower($skillConfig.Item('type'))
-	If $skillType == 'none' Then Return Null
-	Local $gates = $skillConfig.Item('gates')
-	Local $skillTarget = $target
-	If $skillType == 'heal' Then
-		$skillTarget = PickAdvancedCombatHealTarget($fightRange, $gates, $selfAgent, $skillSlot + 1, $lastSkillCastTimes)
-		If $skillTarget == Null Then Return Null
-	EndIf
-	For $gate In $gates
-		If Not EvaluateAdvancedCombatGate($gate, $skillSlot + 1, $skillTarget, $selfAgent, $lastSkillCastTimes) Then Return Null
-	Next
-	Return $skillTarget
-EndFunc
 
 Global $default_moveaggroandkill_options = ObjCreate('Scripting.Dictionary')
 $default_moveaggroandkill_options.Add('fightFunction', KillFoesInArea)
@@ -1467,7 +1142,74 @@ Func KillFoesInArea($options = $default_moveaggroandkill_options)
 	Return $SUCCESS
 EndFunc
 
+;~ Take current character's position (AND orientation) to flag heroes in a fan position
+Func FanFlagHeroes($range = $RANGE_AREA)
+	Local $heroCount = GetHeroCount()
+	; Change your hero locations here
+	Switch $heroCount
+		Case 3
+			; right, left, behind
+			Local $heroFlagPositions[] = [1, 2, 3]
+		Case 5
+			; right, left, behind, behind right, behind left
+			Local $heroFlagPositions[] = [1, 2, 3, 4, 5]
+		Case 7
+			; right, left, behind, behind right, behind left, way behind right, way behind left
+			Local $heroFlagPositions[] = [1, 2, 6, 3, 4, 5, 7]
+		Case Else
+			Local $heroFlagPositions[0] = []
+	EndSwitch
 
+	Local $me = GetMyAgent()
+	Local $x = DllStructGetData($me, 'X')
+	Local $y = DllStructGetData($me, 'Y')
+	Local $rotationX = DllStructGetData($me, 'RotationCos')
+	Local $rotationY = DllStructGetData($me, 'RotationSin')
+	Local $distance = $range + 10
+
+	Local $agent = GetNearestEnemyToAgent($me)
+	If $agent <> Null Then
+		$rotationX = DllStructGetData($agent, 'X') - $x
+		$rotationY = DllStructGetData($agent, 'Y') - $y
+		Local $distanceToFoe = Sqrt($rotationX ^ 2 + $rotationY ^ 2)
+		$rotationX = $rotationX / $distanceToFoe
+		$rotationY = $rotationY / $distanceToFoe
+	EndIf
+
+	; To the right
+	If $heroCount > 0 Then CommandHero($heroFlagPositions[0], $x + $rotationY * $distance, $y - $rotationX * $distance)
+	; To the left
+	If $heroCount > 1 Then CommandHero($heroFlagPositions[1], $x - $rotationY * $distance, $y + $rotationX * $distance)
+	; Straight behind
+	If $heroCount > 2 Then CommandHero($heroFlagPositions[2], $x - $rotationX * $distance, $y - $rotationY * $distance)
+	; To the right, behind
+	If $heroCount > 3 Then CommandHero($heroFlagPositions[3], $x + ($rotationY - $rotationX) * $distance, $y - ($rotationX + $rotationY) * $distance)
+	; To the left, behind
+	If $heroCount > 4 Then CommandHero($heroFlagPositions[4], $x - ($rotationY + $rotationX) * $distance, $y + ($rotationX - $rotationY) * $distance)
+	; To the right, way behind
+	If $heroCount > 5 Then CommandHero($heroFlagPositions[5], $x + ($rotationY / 2 - 2 * $rotationX) * $distance, $y - (2 * $rotationY + $rotationX / 2) * $distance)
+	; To the left, way behind
+	If $heroCount > 6 Then CommandHero($heroFlagPositions[6], $x - ($rotationY / 2 + 2 * $rotationX) * $distance, $y + ($rotationX / 2 - 2 * $rotationY) * $distance)
+
+EndFunc
+
+
+#Region AdvancedCombat
+Global $advanced_combat_config = CreateDefaultAdvancedCombatConfig()
+
+Func CreateDefaultAdvancedCombatConfig()
+	Local $config = ObjCreate('Scripting.Dictionary')
+	$config.Add('enabled', False)
+	Local $skills[8]
+	For $i = 0 To 7
+		$skills[$i] = ObjCreate('Scripting.Dictionary')
+		$skills[$i].Add('type', 'damage')
+		Local $gates[0]
+		$skills[$i].Add('gates', $gates)
+	Next
+	$config.Add('skills', $skills)
+	Return $config
+EndFunc
 
 ;~ Advanced combat version of KillFoesInArea with dynamic targeting and configurable skill gates
 Func AdvancedCombatKillFoesInArea($options = $default_moveaggroandkill_options)
@@ -1540,56 +1282,308 @@ Func AdvancedCombatKillFoesInArea($options = $default_moveaggroandkill_options)
 	Return $SUCCESS
 EndFunc
 
-;~ Take current character's position (AND orientation) to flag heroes in a fan position
-Func FanFlagHeroes($range = $RANGE_AREA)
-	Local $heroCount = GetHeroCount()
-	; Change your hero locations here
-	Switch $heroCount
-		Case 3
-			; right, left, behind
-			Local $heroFlagPositions[] = [1, 2, 3]
-		Case 5
-			; right, left, behind, behind right, behind left
-			Local $heroFlagPositions[] = [1, 2, 3, 4, 5]
-		Case 7
-			; right, left, behind, behind right, behind left, way behind right, way behind left
-			Local $heroFlagPositions[] = [1, 2, 6, 3, 4, 5, 7]
-		Case Else
-			Local $heroFlagPositions[0] = []
+Func GetAdvancedCombatTarget($me, $fightRange, $currentTarget = Null)
+	Local $foes = GetFoesInRangeOfAgent($me, $fightRange)
+	If Not IsArray($foes) Then Return $currentTarget
+
+	Local $bestTarget = Null
+	Local $bestDistance = 999999
+
+	; Best-effort resilient targeting: pick the closest valid foe.
+	For $foe In $foes
+		If $foe == Null Or Not EnemyAgentFilter($foe) Then ContinueLoop
+		Local $distance = GetDistance($me, $foe)
+		If $distance <= 0 Then ContinueLoop
+		If $distance < $bestDistance Then
+			$bestDistance = $distance
+			$bestTarget = $foe
+		EndIf
+	Next
+
+	If $bestTarget <> Null Then Return $bestTarget
+	Return $currentTarget
+EndFunc
+
+Func PickAdvancedCombatHealTarget($fightRange, $gates, $selfAgent, $skillSlot, ByRef $lastSkillCastTimes)
+	Local $allies = GetAgentArray($ID_AGENT_TYPE_NPC)
+	Local $best = Null
+	Local $lowestHp = 2.0
+	For $ally In $allies
+		If DllStructGetData($ally, 'Allegiance') <> $ID_ALLEGIANCE_TEAM Then ContinueLoop
+		If GetDistance($selfAgent, $ally) > $fightRange Then ContinueLoop
+		If GetIsDead($ally) Then ContinueLoop
+		Local $allGatesPass = True
+		For $gate In $gates
+			If Not EvaluateAdvancedCombatGate($gate, $skillSlot, $ally, $selfAgent, $lastSkillCastTimes) Then
+				$allGatesPass = False
+				ExitLoop
+			EndIf
+		Next
+		If $allGatesPass And DllStructGetData($ally, 'HealthPercent') < $lowestHp Then
+			$best = $ally
+			$lowestHp = DllStructGetData($ally, 'HealthPercent')
+		EndIf
+	Next
+	Return $best
+EndFunc
+
+Func IsAdvancedCombatSkillReady($skillSlot, $skillsCostMap)
+	Local $skillBarSlot = $skillSlot + 1
+	Local $sufficientEnergy = $skillsCostMap == Null ? True : (GetEnergy() >= $skillsCostMap[$skillSlot])
+	Local $skill = GetSkillByID(GetSkillbarSkillID($skillBarSlot))
+	Local $requiredAdrenaline = DllStructGetData($skill, 'Adrenaline')
+	Local $sufficientAdrenaline = $requiredAdrenaline <= 0 Or GetSkillbarSkillAdrenaline($skillBarSlot) >= $requiredAdrenaline
+	Return $sufficientEnergy And $sufficientAdrenaline And IsRecharged($skillBarSlot)
+EndFunc
+
+Func ShouldUseAdvancedCombatSkill($skillSlot, $skillConfig, $target, $selfAgent, $fightRange, ByRef $lastSkillCastTimes)
+	Local $skillType = StringLower($skillConfig.Item('type'))
+	If $skillType == 'none' Then Return Null
+	Local $gates = $skillConfig.Item('gates')
+	Local $skillTarget = $target
+	If $skillType == 'heal' Then
+		$skillTarget = PickAdvancedCombatHealTarget($fightRange, $gates, $selfAgent, $skillSlot + 1, $lastSkillCastTimes)
+		If $skillTarget == Null Then Return Null
+	EndIf
+	For $gate In $gates
+		If Not EvaluateAdvancedCombatGate($gate, $skillSlot + 1, $skillTarget, $selfAgent, $lastSkillCastTimes) Then Return Null
+	Next
+	Return $skillTarget
+EndFunc
+
+Func EvaluateAdvancedCombatGate($gate, $skillSlot, $target, $selfAgent, ByRef $lastSkillCastTimes)
+	Local $gateType = StringLower($gate.Item('type'))
+	Local $value1 = $gate.Item('value1')
+	Local $value2 = $gate.Item('value2')
+	Local $result = True
+	Local $numericValue1 = 0
+	Local $numericValue2 = 0
+
+	Switch $gateType
+		Case 'cooldown'
+			If Not TryParseAdvancedCombatGateNumber($value1, $numericValue1) Or $numericValue1 <= 0 Then
+				$result = True
+			Else
+				$result = TimerDiff($lastSkillCastTimes[$skillSlot - 1]) >= $numericValue1
+			EndIf
+		Case 'distancetotarget'
+			$result = GetDistance($selfAgent, $target) > Number($value1)
+		Case 'effectsoftarget'
+			$result = GetHasEffectByName($target, $value1)
+		Case 'effectsofself'
+			$result = GetHasEffectByName($selfAgent, $value1)
+		Case 'iskd'
+			$result = GetIsKnocked($target)
+		Case 'healthbelow'
+			$result = DllStructGetData($target, 'HealthPercent') * 100 < Number($value1)
+		Case 'daggerstatus'
+			Switch StringLower($value1)
+				Case 'lead attack'
+					$result = GetHasLeadAttackStatus($target)
+				Case 'offhand attack'
+					$result = GetHasOffhandAttackStatus($target)
+				Case 'dual attack'
+					$result = GetHasDualAttackStatus($target)
+				Case Else
+					$result = False
+			EndSwitch
+		Case 'combo'
+			If Not TryParseAdvancedCombatGateNumber($value1, $numericValue1) Or Not TryParseAdvancedCombatGateNumber($value2, $numericValue2) Then
+				$result = False
+			Else
+				Local $comboSkillIndex = Int($numericValue1) - 1
+				$result = $comboSkillIndex >= 0 And $comboSkillIndex < 8 And TimerDiff($lastSkillCastTimes[$comboSkillIndex]) <= $numericValue2
+			EndIf
+		Case 'haseffect'
+			$result = GetHasEffectByName($target, $value1)
+		Case 'ispartymember'
+			$result = DllStructGetData($target, 'Allegiance') == $ID_ALLEGIANCE_TEAM
+		Case 'isself'
+			$result = DllStructGetData($target, 'ID') == DllStructGetData($selfAgent, 'ID')
+		Case 'notaffectedbyskill'
+			If TryParseAdvancedCombatGateNumber($value1, $numericValue1) Then
+				Local $skillBarSlot = Int($numericValue1)
+				If $skillBarSlot >= 1 And $skillBarSlot <= 8 Then
+					Local $skillId = GetSkillbarSkillID($skillBarSlot)
+					$result = $skillId > 0 And GetEffectTimeRemaining($skillId) == 0
+				Else
+					$result = False
+				EndIf
+			Else
+				$result = False
+			EndIf
 	EndSwitch
 
-	Local $me = GetMyAgent()
-	Local $x = DllStructGetData($me, 'X')
-	Local $y = DllStructGetData($me, 'Y')
-	Local $rotationX = DllStructGetData($me, 'RotationCos')
-	Local $rotationY = DllStructGetData($me, 'RotationSin')
-	Local $distance = $range + 10
+	If $gate.Item('not') Then $result = Not $result
+	Return $result
+EndFunc
 
-	Local $agent = GetNearestEnemyToAgent($me)
-	If $agent <> Null Then
-		$rotationX = DllStructGetData($agent, 'X') - $x
-		$rotationY = DllStructGetData($agent, 'Y') - $y
-		Local $distanceToFoe = Sqrt($rotationX ^ 2 + $rotationY ^ 2)
-		$rotationX = $rotationX / $distanceToFoe
-		$rotationY = $rotationY / $distanceToFoe
+Func TryParseAdvancedCombatGateNumber($rawValue, ByRef $parsedValue)
+	$parsedValue = 0
+	Local $normalized = StringStripWS($rawValue, 3)
+	If $normalized == '' Then Return False
+	If StringRegExp($normalized, '^[+-]?(?:\d+\.?\d*|\.\d+)$') == 0 Then Return False
+	$parsedValue = Number($normalized)
+	Return True
+EndFunc
+
+Func SerializeAdvancedCombatGates($gates)
+	If Not IsArray($gates) Or UBound($gates) == 0 Then Return ''
+	Local $out = ''
+	For $i = 0 To UBound($gates) - 1
+		If $i > 0 Then $out &= @CRLF
+		$out &= SerializeAdvancedCombatGate($gates[$i])
+	Next
+	Return $out
+EndFunc
+
+Func SerializeAdvancedCombatGate($gate)
+	Local $gateType = $gate.Item('type')
+	Local $args[0]
+	If $gate.Item('not') Then
+		ReDim $args[UBound($args) + 1]
+		$args[UBound($args) - 1] = 'not'
+	EndIf
+	Local $value1 = StringStripWS($gate.Item('value1'), 3)
+	Local $value2 = StringStripWS($gate.Item('value2'), 3)
+	If $value1 <> '' Then
+		ReDim $args[UBound($args) + 1]
+		$args[UBound($args) - 1] = $value1
+	EndIf
+	If $value2 <> '' Then
+		ReDim $args[UBound($args) + 1]
+		$args[UBound($args) - 1] = $value2
+	EndIf
+	Local $serialized = $gateType & '('
+	For $i = 0 To UBound($args) - 1
+		If $i > 0 Then $serialized &= ','
+		$serialized &= $args[$i]
+	Next
+	Return $serialized & ')'
+EndFunc
+
+Func DeserializeAdvancedCombatGates($serializedGates, ByRef $errorMessage)
+	$errorMessage = ''
+	If $serializedGates == '' Or $serializedGates == Null Then
+		Local $empty[0]
+		Return $empty
 	EndIf
 
-	; To the right
-	If $heroCount > 0 Then CommandHero($heroFlagPositions[0], $x + $rotationY * $distance, $y - $rotationX * $distance)
-	; To the left
-	If $heroCount > 1 Then CommandHero($heroFlagPositions[1], $x - $rotationY * $distance, $y + $rotationX * $distance)
-	; Straight behind
-	If $heroCount > 2 Then CommandHero($heroFlagPositions[2], $x - $rotationX * $distance, $y - $rotationY * $distance)
-	; To the right, behind
-	If $heroCount > 3 Then CommandHero($heroFlagPositions[3], $x + ($rotationY - $rotationX) * $distance, $y - ($rotationX + $rotationY) * $distance)
-	; To the left, behind
-	If $heroCount > 4 Then CommandHero($heroFlagPositions[4], $x - ($rotationY + $rotationX) * $distance, $y + ($rotationX - $rotationY) * $distance)
-	; To the right, way behind
-	If $heroCount > 5 Then CommandHero($heroFlagPositions[5], $x + ($rotationY / 2 - 2 * $rotationX) * $distance, $y - (2 * $rotationY + $rotationX / 2) * $distance)
-	; To the left, way behind
-	If $heroCount > 6 Then CommandHero($heroFlagPositions[6], $x - ($rotationY / 2 + 2 * $rotationX) * $distance, $y + ($rotationX / 2 - 2 * $rotationY) * $distance)
+	Local $normalized = StringStripCR($serializedGates)
+	Local $entries[0]
+	Local $current = ''
+	Local $parenDepth = 0
 
+	For $i = 1 To StringLen($normalized)
+		Local $char = StringMid($normalized, $i, 1)
+		Switch $char
+			Case '('
+				$parenDepth += 1
+				$current &= $char
+			Case ')'
+				$parenDepth -= 1
+				If $parenDepth < 0 Then
+					$errorMessage = 'Invalid gate syntax: unexpected closing parenthesis.'
+					Local $empty[0]
+					Return $empty
+				EndIf
+				$current &= $char
+			Case ',', @LF
+				If $parenDepth == 0 Then
+					Local $entry = StringStripWS($current, 3)
+					If $entry <> '' Then
+						ReDim $entries[UBound($entries) + 1]
+						$entries[UBound($entries) - 1] = $entry
+					EndIf
+					$current = ''
+				Else
+					$current &= $char
+				EndIf
+			Case Else
+				$current &= $char
+		EndSwitch
+	Next
+
+	If $parenDepth <> 0 Then
+		$errorMessage = 'Invalid gate syntax: missing closing parenthesis.'
+		Local $empty[0]
+		Return $empty
+	EndIf
+
+	Local $tailEntry = StringStripWS($current, 3)
+	If $tailEntry <> '' Then
+		ReDim $entries[UBound($entries) + 1]
+		$entries[UBound($entries) - 1] = $tailEntry
+	EndIf
+
+	Local $gates[0]
+	For $index = 0 To UBound($entries) - 1
+		Local $lineError = ''
+		Local $gate = DeserializeAdvancedCombatGate($entries[$index], $lineError)
+		If $gate == Null Then
+			$errorMessage = 'Invalid gate at entry ' & ($index + 1) & ': ' & $lineError
+			Local $empty[0]
+			Return $empty
+		EndIf
+		ReDim $gates[UBound($gates) + 1]
+		$gates[UBound($gates) - 1] = $gate
+	Next
+	Return $gates
 EndFunc
+
+Func DeserializeAdvancedCombatGate($serializedGate, ByRef $errorMessage)
+	Local $line = StringStripWS($serializedGate, 3)
+	If $line == '' Then Return Null
+	Local $openParen = StringInStr($line, '(', 0, 1)
+	Local $closeParen = StringInStr($line, ')', 0, -1)
+	If $openParen <= 1 Or $closeParen <= $openParen Or $closeParen <> StringLen($line) Then
+		$errorMessage = 'Invalid gate syntax: "' & $line & '". Expected GateName(arg1,arg2).'
+		Return Null
+	EndIf
+
+	Local $gateType = StringStripWS(StringLeft($line, $openParen - 1), 3)
+	If $gateType == '' Then
+		$errorMessage = 'Missing gate name in line: "' & $line & '".'
+		Return Null
+	EndIf
+
+	Local $argsRaw = StringMid($line, $openParen + 1, $closeParen - $openParen - 1)
+	Local $args[0]
+	If StringStripWS($argsRaw, 3) <> '' Then
+		Local $tokens = StringSplit($argsRaw, ',', $STR_NOCOUNT)
+		For $token In $tokens
+			$token = StringStripWS($token, 3)
+			If $token == '' Then
+				$errorMessage = 'Invalid empty argument in line: "' & $line & '".'
+				Return Null
+			EndIf
+			ReDim $args[UBound($args) + 1]
+			$args[UBound($args) - 1] = $token
+		Next
+	EndIf
+
+	Local $gate = ObjCreate('Scripting.Dictionary')
+	$gate.Add('type', $gateType)
+	$gate.Add('not', False)
+	$gate.Add('value1', '')
+	$gate.Add('value2', '')
+
+	Local $argIndex = 0
+	If UBound($args) > 0 And StringLower($args[0]) == 'not' Then
+		$gate.Item('not') = True
+		$argIndex = 1
+	EndIf
+	If UBound($args) > $argIndex Then $gate.Item('value1') = $args[$argIndex]
+	If UBound($args) > ($argIndex + 1) Then $gate.Item('value2') = $args[$argIndex + 1]
+	If UBound($args) > ($argIndex + 2) Then
+		$errorMessage = 'Too many arguments in line: "' & $line & '".'
+		Return Null
+	EndIf
+
+	Return $gate
+EndFunc
+
+#EndRegion AdvancedCombat
 #EndRegion Map Clearing Utilities
 #EndRegion Advanced actions
 
