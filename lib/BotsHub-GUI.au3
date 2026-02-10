@@ -512,17 +512,19 @@ Func GuiAdvancedCombatConfigureSkill($skillIndex)
 	Local $window = GUICreate('Configure skill ' & ($skillIndex + 1), 630, 800, -1, -1, -1, -1, $gui_botshub)
 	Local $labelType = GUICtrlCreateLabel('Skill type:', 15, 15, 80, 20)
 	Local $comboType = GUICtrlCreateCombo('', 95, 12, 180, 24, BitOR($CBS_DROPDOWNLIST, $WS_VSCROLL))
-	GUICtrlSetData($comboType, 'damage|heal|preparation', StringLower($skillConfig.Item('type')))
+	GUICtrlSetData($comboType, 'none|damage|heal|preparation', StringLower($skillConfig.Item('type')))
 	Local $labelGates = GUICtrlCreateLabel('Conditional gates: GateName(arg1,arg2,...) (separate with comma or newline)', 15, 50, 600, 18)
 	Local $editGates = GUICtrlCreateEdit($gatesText, 15, 72, 530, 92, BitOR($ES_MULTILINE, $ES_WANTRETURN, $WS_VSCROLL))
 	Local $labelHelp = GUICtrlCreateLabel('Information:' & @CRLF & _	
 	'Here you can configure when and how a skill on your bar should be activated.' & @CRLF & _
 	'The possible skill types are:' & @CRLF & _
-	'1. Damage skills: activated on an enemy target.' & @CRLF & _
-	'2. Heal skills: activated on an allied target.' & @CRLF & _
-	'3. Preparation skills: activated without any target' & @CRLF & _
+	'1. None: skip this skill slot, never cast it.' & @CRLF & _
+	'2. Damage skills: activated on an enemy target.' & @CRLF & _
+	'3. Heal skills: activated on an allied target.' & @CRLF & _
+	'4. Preparation skills: activated without any target' & @CRLF & _
 	'' & @CRLF & _
 	'For each of those skill types you can choose *conditional gates*, which determine logical conditions that need to be satisfied in order for bot to activate that skill.' & @CRLF & _
+	'For skill type none, gates are ignored because the skill is never activated.' & @CRLF & _
 	'Syntax for each gate: GateName(arg1,arg2,...)' & @CRLF & _
 	'Optional negation: GateName(not) or GateName(not,arg1,...)' & @CRLF & _
 	'Gate separator: use a comma or put each gate on a new line for readability.' & @CRLF & _
@@ -563,7 +565,7 @@ Func GuiAdvancedCombatConfigureSkill($skillIndex)
 				ExitLoop
 			Case $buttonSave
 				Local $skillType = StringLower(StringStripWS(GUICtrlRead($comboType), 3))
-				If $skillType <> 'damage' And $skillType <> 'heal' And $skillType <> 'preparation' Then
+				If $skillType <> 'none' And $skillType <> 'damage' And $skillType <> 'heal' And $skillType <> 'preparation' Then
 					Warn('Invalid skill type, keeping previous value.')
 					ContinueLoop
 				EndIf

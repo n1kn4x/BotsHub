@@ -1212,6 +1212,7 @@ EndFunc
 
 Func ShouldUseAdvancedCombatSkill($skillSlot, $skillConfig, $target, $selfAgent, $fightRange, ByRef $lastSkillCastTimes)
 	Local $skillType = StringLower($skillConfig.Item('type'))
+	If $skillType == 'none' Then Return Null
 	Local $gates = $skillConfig.Item('gates')
 	Local $skillTarget = $target
 	If $skillType == 'heal' Then
