@@ -1340,6 +1340,9 @@ Func ShouldUseAdvancedCombatSkill($skillSlot, $skillConfig, $target, $selfAgent,
 	Local $skillType = StringLower($skillConfig.Item('type'))
 	If $skillType == 'none' Then Return Null
 	Local $gates = $skillConfig.Item('gates')
+	For $gate In $gates
+		If Not IsAdvancedCombatGateAllowedForSkillType($skillType, $gate.Item('type')) Then Return Null
+	Next
 	Local $skillTarget = $target
 	If $skillType == 'heal' Then
 		$skillTarget = PickAdvancedCombatHealTarget($fightRange, $gates, $selfAgent, $skillSlot + 1, $lastSkillCastTimes)
@@ -1349,6 +1352,40 @@ Func ShouldUseAdvancedCombatSkill($skillSlot, $skillConfig, $target, $selfAgent,
 		If Not EvaluateAdvancedCombatGate($gate, $skillSlot + 1, $skillTarget, $selfAgent, $lastSkillCastTimes) Then Return Null
 	Next
 	Return $skillTarget
+EndFunc
+
+Func IsAdvancedCombatGateAllowedForSkillType($skillType, $gateType)
+	Local $normalizedSkillType = StringLower(StringStripWS($skillType, 3))
+	Local $normalizedGateType = StringLower(StringStripWS($gateType, 3))
+
+	Switch $normalizedGateType
+		Case 'cooldown', 'combo', 'effectsofself'
+			Return $normalizedSkillType == 'damage' Or $normalizedSkillType == 'heal' Or $normalizedSkillType == 'preparation'
+		Case 'distancetotarget', 'iskd'
+			Return $normalizedSkillType == 'damage' Or $normalizedSkillType == 'heal'
+		Case 'effectsoftarget', 'daggerstatus'
+			Return $normalizedSkillType == 'damage'
+		Case 'healthbelow'
+			Return $normalizedSkillType == 'damage' Or $normalizedSkillType == 'heal'
+		Case 'haseffect', 'ispartymember', 'isself'
+			Return $normalizedSkillType == 'heal'
+		Case 'notaffectedbyskill'
+			Return $normalizedSkillType == 'damage' Or $normalizedSkillType == 'heal' Or $normalizedSkillType == 'preparation'
+		Case Else
+			Return False
+	EndSwitch
+EndFunc
+
+Func ValidateAdvancedCombatGatesForSkillType($gates, $skillType, ByRef $errorMessage)
+	$errorMessage = ''
+	If Not IsArray($gates) Then Return True
+	For $i = 0 To UBound($gates) - 1
+		Local $gateType = $gates[$i].Item('type')
+		If IsAdvancedCombatGateAllowedForSkillType($skillType, $gateType) Then ContinueLoop
+		$errorMessage = 'Gate "' & $gateType & '" is not allowed for skill type "' & $skillType & '".'
+		Return False
+	Next
+	Return True
 EndFunc
 
 Func EvaluateAdvancedCombatGate($gate, $skillSlot, $target, $selfAgent, ByRef $lastSkillCastTimes)
