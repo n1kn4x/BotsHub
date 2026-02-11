@@ -513,7 +513,6 @@ EndFunc
 
 Func GetAdvancedCombatGateHelpText($skillType)
 	Local $baseHelp = 'Conditional gates control whether the skill can be cast.' & @CRLF & _
-	'For skill type none, gates are ignored because the skill is never activated.' & @CRLF & _
 	'Syntax: GateName(arg1,arg2,...)' & @CRLF & _
 	'Optional negation: GateName(not) or GateName(not,arg1,...)' & @CRLF & _
 	'Separator: use a comma or put each gate on a new line.' & @CRLF & @CRLF
