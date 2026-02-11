@@ -508,7 +508,7 @@ Func GetAdvancedCombatSkillTypeHelpText()
 	'1. none: skip this skill slot, never cast it.' & @CRLF & _
 	'2. damage: activated on an enemy target.' & @CRLF & _
 	'3. heal: activated on an allied target.' & @CRLF & _
-	'4. preparation: activated without any target.'
+	'4. preparation: activated without any target; it does not need a target to cast.'
 EndFunc
 
 Func GetAdvancedCombatGateHelpText($skillType)
@@ -528,23 +528,33 @@ Func GetAdvancedCombatGateHelpText($skillType)
 			'- EffectsOfSelf(effectName): the playable character must have effectName. Example: EffectsOfSelf(enchanted)' & @CRLF & _
 			'- IsKD(): the target must be knocked-down. Example: IsKD()' & @CRLF & _
 			'- HealthBelow(percent): the target must have health below percent. Example: HealthBelow(50)' & @CRLF & _
-			'- DaggerStatus(status): target status can be lead attack, offhand attack, dual attack. Example: DaggerStatus(lead attack)' & @CRLF & @CRLF & _
+			'- DaggerStatus(status): target status can be lead attack, offhand attack, dual attack. Example: DaggerStatus(lead attack)' & @CRLF & _
+			'- NotAffectedBySkill(skillBarPosition): checks self only; playable character must not be under the effect of skillBarPosition (1-8). Example: NotAffectedBySkill(1)' & @CRLF & @CRLF & _
 			'Possible effectName values: conditioned, bleeding, crippled, dead, deepwounded, poisoned, enchanted, degenhexed, hexed, weaponspelled.'
 		Case 'heal'
 			Return $baseHelp & _
 			'Heal skill conditional gates (targets are allies):' & @CRLF & _
+			'- Combo(slot,timeWindowMs): another skill in your bar (slot 1-8) must have been used first within timeWindowMs milliseconds. Example: Combo(2,3000)' & @CRLF & _
+			'- Cooldown(cooldownMs): cooldownMs milliseconds need to pass before this skill is used again. Example: Cooldown(5000)' & @CRLF & _
+			'- EffectsOfSelf(effectName): the playable character must have effectName. Example: EffectsOfSelf(enchanted)' & @CRLF & _
+			'- DistanceToTarget(distance): the target must be at least distance units away. Example: DistanceToTarget(900)' & @CRLF & _
+			'- IsKD(): the target must be knocked-down. Example: IsKD()' & @CRLF & _
 			'- HealthBelow(percent): the target must have health below percent. Example: HealthBelow(50)' & @CRLF & _
 			'- HasEffect(effectName): the target must have effectName. Example: HasEffect(bleeding)' & @CRLF & _
 			'- IsPartyMember(): the target must be a party member (no minions or other NPCs). Example: IsPartyMember()' & @CRLF & _
-			'- IsSelf(): the target must be the playable character. Example: IsSelf()' & @CRLF & @CRLF & _
+			'- IsSelf(): the target must be the playable character. Example: IsSelf()' & @CRLF & _
+			'- NotAffectedBySkill(skillBarPosition): checks self only; playable character must not be under the effect of skillBarPosition (1-8). Example: NotAffectedBySkill(1)' & @CRLF & @CRLF & _
 			'Possible effectName values: conditioned, bleeding, crippled, dead, deepwounded, poisoned, enchanted, degenhexed, hexed, weaponspelled.'
 		Case 'preparation'
 			Return $baseHelp & _
-			'Preparation skill conditional gates:' & @CRLF & _
+			'Preparation skill conditional gates (no target needed to cast):' & @CRLF & _
+			'- Combo(slot,timeWindowMs): another skill in your bar (slot 1-8) must have been used first within timeWindowMs milliseconds. Example: Combo(2,3000)' & @CRLF & _
 			'- Cooldown(cooldownMs): cooldownMs milliseconds need to pass before this skill is used again. Example: Cooldown(5000)' & @CRLF & _
-			'- NotAffectedBySkill(skillBarPosition): playable character must not be under the effect of skillBarPosition (1-8). Example: NotAffectedBySkill(1)'
+			'- EffectsOfSelf(effectName): the playable character must have effectName. Example: EffectsOfSelf(enchanted)' & @CRLF & _
+			'- NotAffectedBySkill(skillBarPosition): checks self only; playable character must not be under the effect of skillBarPosition (1-8). Example: NotAffectedBySkill(1)' & @CRLF & @CRLF & _
+			'Any other gate name is invalid for this skill type and will not be saved.'
 		Case Else
-			Return $baseHelp
+			Return $baseHelp & 'Choose a skill type to see the allowed gates.'
 	EndSwitch
 EndFunc
 
@@ -566,7 +576,7 @@ Func GuiAdvancedCombatConfigureSkill($skillIndex)
 
 	Local $buttonSave = GUICtrlCreateButton('Save', 390, 752, 75, 28)
 	Local $buttonCancel = GUICtrlCreateButton('Cancel', 470, 752, 75, 28)
-	GUICtrlSetTip($editGates, 'Examples:' & @CRLF & 'Cooldown(5000)' & @CRLF & 'IsHexed(not)' & @CRLF & 'Combo(2,3000)' & @CRLF & 'Combo(not,2,3000)')
+	GUICtrlSetTip($editGates, 'Examples:' & @CRLF & 'Cooldown(5000)' & @CRLF & 'EffectsOfSelf(enchanted)' & @CRLF & 'Combo(2,3000)' & @CRLF & 'Combo(not,2,3000)')
 	GUISetState(@SW_SHOW, $window)
 
 	Local $accepted = False
@@ -588,6 +598,12 @@ Func GuiAdvancedCombatConfigureSkill($skillIndex)
 				If $parseError <> '' Then
 					Warn($parseError)
 					MsgBox(16, 'Parsing failed', 'Parsing conditional gates failed, so this skill configuration cannot be saved.' & @CRLF & @CRLF & $parseError, 0, $window)
+					ContinueLoop
+				EndIf
+				Local $gateValidationError = ''
+				If Not ValidateAdvancedCombatGatesForSkillType($parsedGates, $skillType, $gateValidationError) Then
+					Warn($gateValidationError)
+					MsgBox(16, 'Invalid gate for skill type', $gateValidationError, 0, $window)
 					ContinueLoop
 				EndIf
 				$skillConfig.Item('type') = $skillType
@@ -636,6 +652,12 @@ Func GuiAdvancedCombatHandler()
 				If $stype <> Null And $stype <> '' Then $skills[$i].Item('type') = $stype
 				Local $deserializeError = ''
 				$skills[$i].Item('gates') = DeserializeAdvancedCombatGates(_JSON_Get($jsonObject, 'skills.' & ($i + 1) & '.gates'), $deserializeError)
+				Local $loadedGateValidationError = ''
+				If Not ValidateAdvancedCombatGatesForSkillType($skills[$i].Item('gates'), $skills[$i].Item('type'), $loadedGateValidationError) Then
+					Warn('Advanced combat skill ' & ($i + 1) & ': ' & $loadedGateValidationError & ' Clearing gates for this skill.')
+					Local $emptyGates[0]
+					$skills[$i].Item('gates') = $emptyGates
+				EndIf
 			Next
 			$advanced_combat_config.Item('skills') = $skills
 			RefreshAdvancedCombatMode()
