@@ -26,6 +26,7 @@ Opt('MustDeclareVars', True)
 
 ; ==== Constants ====
 Global Const $TEST_SUITE_INFORMATIONS = 'Just a test suite.'
+Global Const $STUCK_DETECTION_TEST_DISTANCE = 500
 Global Const $RESURRECT_SIGNET_AND_IAU = 'OQQBcBBAAAAAIAQTCAAAAAA'
 Global Const $RESURRECT_SIGNET_AND_FALLBACK = 'OQChYyDAAAAAEA7YAAAAAA'
 Global Const $RESURRECTION_SIGNET_SKILLSLOT = 4
@@ -94,6 +95,34 @@ Func RunTestSuite()
 	If TestDeathRIP() == $FAIL Then Error('Death test failed')
 
 	Return $PAUSE
+EndFunc
+
+
+;~ Move and clear 500 units in front of the character using current orientation.
+;~ Useful to validate MoveAggroAndKill stuck detection behavior without hardcoded coordinates.
+Func RunStuckDetectionTest()
+	Info('Running stuck detection forward movement test')
+
+	Local $me = GetMyAgent()
+	Local $myX = DllStructGetData($me, 'X')
+	Local $myY = DllStructGetData($me, 'Y')
+	Local $rotationX = DllStructGetData($me, 'RotationCos')
+	Local $rotationY = DllStructGetData($me, 'RotationSin')
+
+	Local $targetX = $myX + ($rotationX * $STUCK_DETECTION_TEST_DISTANCE)
+	Local $targetY = $myY + ($rotationY * $STUCK_DETECTION_TEST_DISTANCE)
+
+	Info('Current position: (' & Round($myX) & ', ' & Round($myY) & ') - moving to (' & Round($targetX) & ', ' & Round($targetY) & ')')
+
+	Local $fightOptions = CloneDictMap($default_moveaggroandkill_options)
+	$fightOptions.Item('openChests') = False
+
+	If MoveAggroAndKill($targetX, $targetY, 'Stuck detection test', $fightOptions) == $FAIL Then
+		Error('Stuck detection test failed while moving forward')
+		Return $FAIL
+	EndIf
+
+	Return $SUCCESS
 EndFunc
 
 
