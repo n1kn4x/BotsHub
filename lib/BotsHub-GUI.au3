@@ -818,7 +818,7 @@ EndFunc
 Func GuiStartButtonHandler()
 	Switch $runtime_status
 		Case 'UNINITIALIZED'
-			If (Authentification() <> $SUCCESS) Then Return
+			If (Authentification(GUICtrlRead($gui_combo_characterchoice)) <> $SUCCESS) Then Return
 			$runtime_status = 'INITIALIZED'
 			GUICtrlSetData($gui_startbutton, 'Pause')
 			GUICtrlSetBkColor($gui_startbutton, $COLOR_LIGHTCORAL)
@@ -1301,7 +1301,7 @@ EndFunc
 
 Func UpdateItemStats()
 	; All static variables are initialized only once when UpdateItemStats() function is called first time
-	Local Static $itemsToCount[28] = [$ID_GLOB_OF_ECTOPLASM, $ID_OBSIDIAN_SHARD, $ID_LOCKPICK, _
+	Local Static $itemsToCount[] = [$ID_GLOB_OF_ECTOPLASM, $ID_OBSIDIAN_SHARD, $ID_LOCKPICK, _
 		$ID_MARGONITE_GEMSTONE, $ID_STYGIAN_GEMSTONE, $ID_TITAN_GEMSTONE, $ID_TORMENT_GEMSTONE, _
 		$ID_DIESSA_CHALICE, $ID_GOLDEN_RIN_RELIC, $ID_DESTROYER_CORE, $ID_GLACIAL_STONE, _
 		$ID_WAR_SUPPLIES, $ID_MINISTERIAL_COMMENDATION, $ID_JADE_BRACELET, _
@@ -1912,12 +1912,6 @@ Func RenameGUI($gui_title)
 EndFunc
 
 
-Func ChangeCharacterNameBoxWithInput()
-	GUICtrlDelete($gui_combo_characterchoice)
-	$gui_combo_characterchoice = GUICtrlCreateCombo('Character Name Input', 10, 470, 150, 20)
-EndFunc
-
-
 Func EnableStartButton()
 	GUICtrlSetData($gui_startbutton, 'Start')
 	GUICtrlSetState($gui_startbutton, $GUI_ENABLE)
@@ -2024,7 +2018,6 @@ EndFunc
 Func FindDirectChildTreeViewItem($treeViewHandle, $treeViewItem, $name)
 	If $treeViewItem == Null Then
 		$treeViewItem = _GUICtrlTreeView_GetFirstItem($treeViewHandle)
-		;Out('parent not mentioned, taking ' & $treeViewItem)
 	EndIf
 	Return FindDirectChildTreeViewItemHelper($treeViewHandle, $treeViewItem, $name)
 EndFunc
@@ -2036,12 +2029,10 @@ Func FindDirectChildTreeViewItemHelper($treeViewHandle, $treeViewItem, $name)
 	While $treeViewItem <> 0
 		$treeViewItemName = _GUICtrlTreeView_GetText($treeViewHandle, $treeViewItem)
 		If $treeViewItemName == $name Then
-			Out('found: ' & $name)
 			Return $treeViewItem
 		EndIf
 		$treeViewItem = _GUICtrlTreeView_GetNextSibling($treeViewHandle, $treeViewItem)
 	WEnd
-	Out('Not found: ' & $name)
 	Return Null
 EndFunc
 

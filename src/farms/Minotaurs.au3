@@ -73,7 +73,7 @@ Func GoToProphetsPath()
 		MoveTo(-17071, -1065)
 		MoveTo(-18069, -1026)
 		MoveTo(-18853, -444)
-		MoveTo(-20100, -400)
+		Move(-20100, -400)
 		RandomSleep(1000)
 		WaitMapLoading($ID_PROPHETS_PATH, 10000, 2000)
 	WEnd
@@ -85,7 +85,7 @@ Func FarmMinotaurs()
 	If GetMapID() <> $ID_PROPHETS_PATH Then Return $FAIL
 
 	; 12 groups to vanquish
-	Local Static $minotaurs[12][3] = [ _
+	Local Static $minotaurs[][] = [ _
 		[18870, -6, 'Minotaurs group 1'], _
 		[18828, 2201, 'Minotaurs group 2'], _
 		[17106, 1459, 'Minotaurs group 3'], _

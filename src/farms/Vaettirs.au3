@@ -238,9 +238,18 @@ EndFunc
 ;~ Farm loop
 Func VaettirsFarmLoop()
 	; In case character died at previous loop
-	While IsPlayerDead()
-		Sleep(2500)
-	WEnd
+	If IsPlayerDead() Then 
+		If IsPlayerAtMaxMalus() Then
+			Warn('Reached max death malus, restarting the farm setup')
+			$vaettirs_farm_setup = False
+			; Technically overcounting failure by one here
+			Return $FAIL
+		EndIf
+		While IsPlayerDead()
+			Sleep(2500)
+		WEnd
+		Return RezoneToJagaMoraine()
+	EndIf
 	If $vaettirs_player_profession == $ID_MONK Then UseSkillEx($VAETTIR_MONK_BALTHAZARS_SPIRIT, GetMyAgent())
 	If $vaettirs_player_profession == $ID_ELEMENTALIST Then UseSkillEx($VAETTIR_ELEMENTALIST_ELEMENTAL_LORD)
 	RandomSleep(500)
@@ -248,8 +257,6 @@ Func VaettirsFarmLoop()
 	If AggroAllMobs() == $FAIL Then Return $FAIL
 	If VaettirsKillSequence() == $FAIL Then Return $FAIL
 	Sleep(1000)
-
-	If IsPlayerDead() Then Return RezoneToJagaMoraine()
 
 	Info('Picking up loot')
 	PickUpItems(VaettirsStayAlive)
@@ -274,7 +281,7 @@ EndFunc
 Func AggroAllMobs()
 	Local $target
 	; Vaettirs locations
-	Local Static $vaettirs[30][2] = [ _
+	Local Static $vaettirs[][] = [ _
 		_ ; left ball
 		[12496,	-22600], _
 		[11375,	-22761], _

@@ -67,7 +67,7 @@ Func GoToDrazach()
 	While GetMapID() <> $ID_DRAZACH_THICKET
 		Info('Moving to Drazach')
 		MoveTo(-5928.21, 14269.09)
-		MoveTo(-6550, 14550)
+		Move(-6550, 14550)
 		RandomSleep(1000)
 		WaitMapLoading($ID_DRAZACH_THICKET, 10000, 2000)
 	WEnd
@@ -94,7 +94,7 @@ Func VanquishDrazach()
 		RandomSleep(1000)
 	EndIf
 
-	Local Static $foes[81][3] = [ _
+	Local Static $foes[][] = [ _
 		[-6506, -16099, 'Start'], _
 		[-8581, -15354, 'Approach'], _
 		[-8627, -13151, 'Clear first big batch'], _

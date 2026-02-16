@@ -101,7 +101,7 @@ Func VanquishFerndale()
 	EndIf
 
 	; 117 groups to vanquish
-	Local Static $foes[117][4] = [ _
+	Local Static $foes[][] = [ _
 		[-11733, 16729, 'Mantis Group 1', $AGGRO_RANGE], _
 		[-11942, 18468, 'Mantis Group 2', $AGGRO_RANGE], _
 		[-11178, 20073, 'Mantis Group 3', $AGGRO_RANGE], _
@@ -223,12 +223,9 @@ Func VanquishFerndale()
 
 	For $i = 0 To UBound($foes) - 1
 		If MoveAggroAndKillInRange($foes[$i][0], $foes[$i][1], $foes[$i][2], $foes[$i][3]) == $FAIL Then Return $FAIL
+		If GetAreaVanquished() Then Return $SUCCESS
 	Next
-	If Not GetAreaVanquished() Then
-		Error('The map has not been completely vanquished.')
-		Return $FAIL
-	Else
-		Info('Map has been fully vanquished.')
-		Return $SUCCESS
-	EndIf
+
+	Error('The map has not been completely vanquished.')
+	Return $FAIL
 EndFunc

@@ -27,23 +27,24 @@
 Opt('MustDeclareVars', True)
 
 ; ==== Constants ====
-Global Const $LDOA_INFORMATIONS = 'The bot will:' & @CRLF _
-	& '- Go right off the bat, on a new character after the cutscene.' & @CRLF _
-	& '- In the beginning it tries to do the elementalist quest to get some initial skill.' & @CRLF _
-	& '- If you are not an elementalist, then it is advised to get some initial skills yourself.' & @CRLF _
-	& '- If you are already level 2, it wont setup your bar or weapons, you can choose.' & @CRLF _
-	& '- It will get you Legendary Defender of Ascalon title, this is not a farming bot.'
+Global Const $LDOA_INFORMATIONS = 'This bot:' & @CRLF _
+	& '- gets weapons and summoning stone' & @CRLF _
+	& '- do a few quests and kill worms outside Ashford until level 2' & @CRLF _
+	& '- between level 2 and 9, does the quest Charr at the Gate repeatedly' & @CRLF _
+	& '- between level 10 and 19 does the quest Farmer Hamnet which is only available one day of the week' & @CRLF _
+	& '- stops once Legendary Defender of Ascalon.'
 ; Average duration ~ 1m
 Global Const $LDOA_FARM_DURATION = 1 * 60 * 1000
 
-Global Const $ID_DIALOG_ACCEPT_QUEST_WAR_PREPARATIONS = 0x80DB01
-Global Const $ID_DIALOG_FINISH_QUEST_WAR_PREPARATIONS = 0x80DB07
-Global Const $ID_DIALOG_ACCEPT_QUEST_ELEMENTALIST_TEST = 0x805301
-Global Const $ID_DIALOG_FINISH_QUEST_ELEMENTALIST_TEST = 0x805307
+; Accepting an finishing 'War Preparation' dialog IDs depend on the profession and are determined dynamically
+Global $TEMPLATE_ID_DIALOG_ACCEPT_QUEST = 0x800001
+Global $TEMPLATE_ID_DIALOG_FINISH_QUEST = 0x800007
 Global Const $ID_DIALOG_SELECT_QUEST_A_MESMERS_BURDEN = 0x804703
 Global Const $ID_DIALOG_ACCEPT_QUEST_A_MESMERS_BURDEN = 0x804701
 Global Const $ID_DIALOG_ACCEPT_QUEST_CHARR_AT_THE_GATE = 0x802E01
 Global Const $ID_DIALOG_ACCEPT_QUEST_FARMER_HAMNET = 0x84A101
+Global Const $ID_DIALOG_ACCEPT_QUEST_BANDIT_RAID = 0x802901
+Global Const $ID_DIALOG_ACCEPT_QUEST_POOR_TENANT = 0x804601
 
 ; Variables used for Survivor async checking (Low Health Monitor)
 Global Const $LOW_HEALTH_THRESHOLD = 0.33
@@ -51,6 +52,11 @@ Global Const $LOW_HEALTH_CHECK_INTERVAL = 100
 
 Global $ldoa_farm_setup = False
 
+Global $ldoa_fight_options = CloneDictMap($default_moveaggroandkill_options)
+$ldoa_fight_options.Item('openChests')			= False
+$ldoa_fight_options.Item('callTarget')			= False
+$ldoa_fight_options.Item('priorityMobs')		= True
+$ldoa_fight_options.Item('lootInFights')		= False
 
 ;~ Main method to get LDOA title
 Func LDOATitleFarm()
@@ -98,7 +104,46 @@ Func InitialSetupLDOA()
 	MoveTo(10399, 318)
 	MoveTo(11004, 1409)
 	Local $questNPC = GetNearestNPCToCoords(11683, 3447)
-	TakeQuest($questNPC, $ID_QUEST_WAR_PREPARATIONS, $ID_DIALOG_ACCEPT_QUEST_WAR_PREPARATIONS)
+	; Determine War Preparation and Profession Test quest IDs and dialog IDs depending on the primary profession
+	Local $warPreparationsQuestID
+	Local $professionTestQuestID
+	Local $primaryProfession = DllStructGetData(GetMyAgent(), 'Primary')
+	Switch $primaryProfession
+		Case $ID_MESMER
+			$warPreparationsQuestID = $ID_QUEST_WAR_PREPARATIONS_MESMER
+			$professionTestQuestID = $ID_QUEST_MESMER_TEST
+		Case $ID_NECROMANCER
+			$warPreparationsQuestID = $ID_QUEST_WAR_PREPARATIONS_NECROMANCER
+			$professionTestQuestID = $ID_QUEST_NECROMANCER_TEST
+		Case $ID_ELEMENTALIST
+			$warPreparationsQuestID = $ID_QUEST_WAR_PREPARATIONS_ELEMENTALIST
+			$professionTestQuestID = $ID_QUEST_ELEMENTALIST_TEST
+		Case $ID_MONK
+			$warPreparationsQuestID = $ID_QUEST_WAR_PREPARATIONS_MONK
+			$professionTestQuestID = $ID_QUEST_MONK_TEST
+		Case $ID_WARRIOR
+			$warPreparationsQuestID = $ID_QUEST_WAR_PREPARATIONS_WARRIOR
+			$professionTestQuestID = $ID_QUEST_WARRIOR_TEST
+		Case $ID_RANGER
+			$warPreparationsQuestID = $ID_QUEST_WAR_PREPARATIONS_RANGER
+			$professionTestQuestID = $ID_QUEST_RANGER_TEST
+	EndSwitch
+	Local $warPreparationsAcceptQuestDialogID = BitOR($TEMPLATE_ID_DIALOG_ACCEPT_QUEST, BitShift($warPreparationsQuestID, -8))
+	Local $warPreparationsFinishQuestDialogID = BitOR($TEMPLATE_ID_DIALOG_FINISH_QUEST, BitShift($warPreparationsQuestID, -8))
+	Local $professionTestAcceptQuestDialogID = BitOR($TEMPLATE_ID_DIALOG_ACCEPT_QUEST, BitShift($professionTestQuestID, -8))
+	Local $professionTestFinishQuestDialogID = BitOR($TEMPLATE_ID_DIALOG_FINISH_QUEST, BitShift($professionTestQuestID, -8))
+	TakeQuest($questNPC, $warPreparationsQuestID, $warPreparationsAcceptQuestDialogID)
+
+	; Could talk to Baron Egan to get Bandit Raid Quest
+	;MoveTo(11000, 10400)
+	;$questNPC = GetNearestNPCToCoords(11060, 10775)
+	;TakeQuest($questNPC, $ID_QUEST_BANDIT_RAID, $ID_DIALOG_ACCEPT_QUEST_BANDIT_RAID)
+
+	; Could also get Namar quest
+	;MoveTo(7607, 5552)
+	;MoveTo(6800, 9500)
+	;$questNPC = GetNearestNPCToCoords(6760, 9720)
+	;TakeQuest($questNPC, $ID_QUEST_POOR_TENANT, $ID_DIALOG_ACCEPT_QUEST_POOR_TENANT)
 
 	MoveTo(7607, 5552)
 	Move(7175, 5229)
@@ -106,15 +151,38 @@ Func InitialSetupLDOA()
 	MoveTo(6116, 3995)
 	UseConsumable($ID_IGNEOUS_SUMMONING_STONE, True)
 	$questNPC = GetNearestNPCToCoords(6187, 4085)
-	TakeQuestReward($questNPC, $ID_QUEST_WAR_PREPARATIONS, $ID_DIALOG_FINISH_QUEST_WAR_PREPARATIONS)
-	TakeQuest($questNPC, $ID_QUEST_ELEMENTALIST_TEST, $ID_DIALOG_ACCEPT_QUEST_ELEMENTALIST_TEST)
+
+	; This quest never appears as completed because taking the reward is the completion
+	; So we send the dialog here manually
+	Info('Finishing War Preparations')
+	GoToNPC($questNPC)
+	Sleep(1000 + GetPing())
+	Dialog($warPreparationsFinishQuestDialogID)
+	Sleep(1000 + GetPing())
+	Info('Done: Finishing War Preparations')
+
+	TakeQuest($questNPC, $professionTestQuestID, $professionTestAcceptQuestDialogID)
 	MoveTo(4187, -948)
-	MoveAggroAndKillInRange(4207, -2892, '', 2500)
+	MoveAggroAndKillInRange(4207, -2892, '', 3000)
+	If $primaryProfession == $ID_MONK Then
+		MoveTo(3868, -4330)
+		Local $npcGwen = GetNearestNPCToCoords(3868, -4330)
+		GoToNPC($npcGwen)
+		Sleep(1000 + GetPing())
+	EndIf
 	MoveTo(3771, -1729)
 	MoveTo(6069, 3865)
-	TakeQuestReward($questNPC, $ID_QUEST_ELEMENTALIST_TEST, $ID_DIALOG_FINISH_QUEST_ELEMENTALIST_TEST)
 
-	$questNPC = GetNearestNPCToCoords(2785, 7736)
+	; This quest never appears as completed either - last dialog to get reward is the completion
+	Info('Finishing Profession Test')
+	GoToNPC($questNPC)
+	Sleep(1000 + GetPing())
+	Dialog($professionTestFinishQuestDialogID)
+	Sleep(1000 + GetPing())
+	Info('Done: Finishing Profession Test')
+
+	MoveTo(2885, 7638)
+	$questNPC = GetNearestNPCToCoords(2885, 7638)
 	TakeQuest($questNPC, $ID_QUEST_A_MESMER_S_BURDEN, $ID_DIALOG_ACCEPT_QUEST_A_MESMERS_BURDEN, $ID_DIALOG_SELECT_QUEST_A_MESMERS_BURDEN)
 
 	DistrictTravel($ID_ASCALON_CITY_PRESEARING, $district_name)
@@ -134,7 +202,6 @@ Func GetBonusWeapons()
 	DestroyFromInventory($bonusItemsMap)
 	Local $luminescentScepter = FindInInventory($ID_LUMINESCENT_SCEPTER)
 	Local $serratedShield = FindInInventory($ID_SERRATED_SHIELD)
-	; TODO: add trashing the other bonus weapons
 	If $luminescentScepter[0] <> 0 And $serratedShield[0] <> 0 Then
 		Info('Equipping Luminescent Scepter and Serrated Shield')
 		Local $item = GetItemBySlot($luminescentScepter[0], $luminescentScepter[1])
@@ -200,6 +267,11 @@ Func LDOATitleFarmLoop()
 	Local $level = DllStructGetData(GetMyAgent(), 'Level')
 	Local $result
 	Info('Current level: ' & $level)
+	If $level < 1 Then
+		Error('Level 0, something went wrong. Waiting a bit and repeating.')
+		RandomSleep(3000)
+		Return $FAIL
+	EndIf
 	If $level < 2 Then
 		$result = LDOATitleFarmUnder2()
 	ElseIf $level < 10 Then
@@ -236,6 +308,8 @@ Func LDOATitleFarmUnder2()
 	For $i = 0 To UBound($wurmies) - 1
 		MoveAggroAndKill($wurmies[$i][0], $wurmies[$i][1])
 		If DllStructGetData(GetMyAgent(), 'Level') == 2 Then Return $SUCCESS
+		; If not in Lakeside County, we ported because of low life
+		If GetMapID() <> $ID_LAKESIDE_COUNTY Then Return $FAIL
 		If IsPlayerDead() Then Return $FAIL
 	Next
 	Return $SUCCESS
@@ -273,14 +347,14 @@ Func LDOATitleFarmAfter10()
 	Info('Starting Hamnet farm...')
 	Info('Heading to Foibles Fair!')
 	DistrictTravel($ID_FOIBLES_FAIR, $district_name)
-	MoveTo(-183, 9002)
 	MoveTo(356, 7834)
 	Info('Entering Wizards Folly!')
 	Move(500, 7300)
 	WaitMapLoading($ID_WIZARDS_FOLLY, 10000, 2000)
 	MoveTo(2200, 6000)
 	UseConsumable($ID_IGNEOUS_SUMMONING_STONE, True)
-	MoveAggroAndKillInRange(2550, 4500, '', 2000)
+	MoveTo(2550, 4500)
+	KillFoesInArea($ldoa_fight_options)
 	If IsPlayerDead() Then Return $FAIL
 	Info('Returning to Foibles Fair')
 	ResignAndReturnToOutpost($ID_FOIBLES_FAIR)
@@ -391,7 +465,7 @@ EndFunc
 
 ;~ Function to deal with inventory after farm, in presearing
 Func PresearingInventoryManagement()
-	If (CountSlots(1, $bags_count) < 5) Then
+	If (CountSlots(1, $bags_count) < 0) Then
 		; Operations order :
 		; 1-Sort items
 		; 2-Identify items

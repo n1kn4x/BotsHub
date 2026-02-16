@@ -62,7 +62,7 @@ Func GoToDaladaUplands()
 	TravelToOutpost($ID_DOOMLORE_SHRINE, $district_name)
 	While GetMapID() <> $ID_DALADA_UPLANDS
 		Info('Moving to Dalada Uplands')
-		MoveTo(-15231, 13608)
+		Move(-15231, 13608)
 		RandomSleep(1000)
 		WaitMapLoading($ID_DALADA_UPLANDS, 10000, 2000)
 	WEnd
@@ -74,7 +74,7 @@ Func VanquishDaladaUplands()
 	If GetMapID() <> $ID_DALADA_UPLANDS Then Return $FAIL
 
 	; 72 groups to vanquish + 21 movements
-	Local Static $foes[93][3] = [ _
+	Local Static $foes[][] = [ _
 		_ ; blessing
 		[-12373, 12899, 'Move To Start'], _
 		[-9464, 15937, 'Charr Group'], _
