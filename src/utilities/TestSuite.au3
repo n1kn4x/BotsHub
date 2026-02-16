@@ -118,8 +118,9 @@ Func RunStuckDetectionTest()
 	$fightOptions.Item('openChests') = False
 
 	If MoveAggroAndKill($targetX, $targetY, 'Stuck detection test', $fightOptions) == $FAIL Then
-		Error('Stuck detection test failed while moving forward')
-		Return $FAIL
+		Error('MoveAggroAndKill returned FAIL')
+	ElseIf MoveAggroAndKill($targetX, $targetY, 'Stuck detection test', $fightOptions) == $SUCCESS Then
+		Error('MoveAggroAndKill returned SUCCESS')
 	EndIf
 
 	Return $SUCCESS
