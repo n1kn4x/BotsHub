@@ -1071,6 +1071,7 @@ Func MoveAggroAndKill($x, $y, $log = '', $options = $default_moveaggroandkill_op
 		; If we didn't move at least $MIN_MOVEMENT, increase $blocked counter. Else, reduce $blocked counter.
 		If $movementDistance < $MIN_MOVEMENT Then
 			$blocked += 1
+			Info('Blocked: ' & $blocked)
 		Else
 			; keep some blocked memory to detect oscillation/stutter faster than full reset
 			$blocked = _Max(0, $blocked - 2)
