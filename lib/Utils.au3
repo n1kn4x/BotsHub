@@ -1366,7 +1366,7 @@ Func IsAdvancedCombatGateAllowedForSkillType($skillType, $gateType)
 			Return $normalizedSkillType == 'damage' Or $normalizedSkillType == 'heal' Or $normalizedSkillType == 'preparation'
 		Case 'distancetotarget', 'iskd'
 			Return $normalizedSkillType == 'damage' Or $normalizedSkillType == 'heal'
-		Case 'effectsoftarget', 'daggerstatus'
+		Case 'effectsoftarget', 'daggerstatus', 'iscasting'
 			Return $normalizedSkillType == 'damage'
 		Case 'healthbelow'
 			Return $normalizedSkillType == 'damage' Or $normalizedSkillType == 'heal'
@@ -1414,6 +1414,8 @@ Func EvaluateAdvancedCombatGate($gate, $skillSlot, $target, $selfAgent, ByRef $l
 			$result = GetHasEffectByName($selfAgent, $value1)
 		Case 'iskd'
 			$result = GetIsKnocked($target)
+		Case 'iscasting'
+			$result = GetIsCasting($target)
 		Case 'healthbelow'
 			$result = DllStructGetData($target, 'HealthPercent') * 100 < Number($value1)
 		Case 'daggerstatus'

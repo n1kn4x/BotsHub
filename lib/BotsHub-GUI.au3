@@ -527,6 +527,7 @@ Func GetAdvancedCombatGateHelpText($skillType)
 			'- EffectsOfTarget(effectName): the target must have effectName. Example: EffectsOfTarget(hexed)' & @CRLF & _
 			'- EffectsOfSelf(effectName): the playable character must have effectName. Example: EffectsOfSelf(enchanted)' & @CRLF & _
 			'- IsKD(): the target must be knocked-down. Example: IsKD()' & @CRLF & _
+			'- IsCasting(): the target must currently be casting a skill. Example: IsCasting()' & @CRLF & _
 			'- HealthBelow(percent): the target must have health below percent. Example: HealthBelow(50)' & @CRLF & _
 			'- DaggerStatus(status): target status can be lead attack, offhand attack, dual attack. Example: DaggerStatus(lead attack)' & @CRLF & _
 			'- NotAffectedBySkill(skillBarPosition): checks self only; playable character must not be under the effect of skillBarPosition (1-8). Example: NotAffectedBySkill(1)' & @CRLF & @CRLF & _
