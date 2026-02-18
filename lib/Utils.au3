@@ -1084,11 +1084,13 @@ Func IsPlayerStuck($movementDistance, ByRef $blocked, $minMovement = 5, $stuckTi
 		; keep some blocked memory to detect oscillation/stutter faster than full reset
 		$blocked = _Max(0, $blocked - 2)
 	EndIf
+	Info('Blocked Counter: ' & $blocked)
 	Return $blocked >= $stuckTicks
 EndFunc
 
 
 Func TryToGetUnstuck($targetX, $targetY, $unstuckIntervalMs = 10000, $unstuckDisplacementThreshold = $RANGE_AREA)
+	Info('Starting Unstuck Routine')
 	Local $unstuckStartTimer = TimerInit()
 
 	Local $me = GetMyAgent()
@@ -1109,8 +1111,12 @@ Func TryToGetUnstuck($targetX, $targetY, $unstuckIntervalMs = 10000, $unstuckDis
 		$myY = DllStructGetData($me, 'Y')
 		; If we moved enough away from initial position consider unstuck
 		Local $movementDistance = ComputeDistance($myInitialX, $myInitialY, $myX, $myY)
-		If $movementDistance >= $unstuckDisplacementThreshold Then Return $SUCCESS
+		If $movementDistance >= $unstuckDisplacementThreshold Then 
+			Info('Unstuck SUCCESSFUL')
+			Return $SUCCESS
+		EndIf
 	WEnd
+	Info('Unstuck FAILED')
 	Return $FAIL
 EndFunc
 
