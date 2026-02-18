@@ -1024,26 +1024,28 @@ Func IsPlayerStuck($movementDistance, ByRef $blocked, $minMovement = 5, $stuckTi
 EndFunc
 
 
-Func TryToGetUnstuck($targetX, $targetY, $unstuckIntervalMs = 10000, $unstuckDisplacementThreshold = 600)
+Func TryToGetUnstuck($targetX, $targetY, $unstuckIntervalMs = 10000, $unstuckDisplacementThreshold = $RANGE_AREA)
 	Info('Starting Unstuck Routine')
 	Local $unstuckStartTimer = TimerInit()
 
 	Local $me = GetMyAgent()
 	Local $myX = DllStructGetData($me, 'X')
 	Local $myY = DllStructGetData($me, 'Y')
+	Local $myInitialX = $myX
+	Local $myInitialY = $myY
 
 	While TimerDiff($unstuckStartTimer) < $unstuckIntervalMs
+		; Try to move randomly from the current position
 		Move($myX, $myY, 500)
 		RandomSleep(500)
 		Move($targetX, $targetY)
 		RandomSleep(1000)
 
 		$me = GetMyAgent()
-		Local $myOldX = $myX
-		Local $myOldY = $myY
 		$myX = DllStructGetData($me, 'X')
 		$myY = DllStructGetData($me, 'Y')
-		Local $movementDistance = ComputeDistance($myOldX, $myOldY, $myX, $myY)
+		; If we moved enough away from initial position consider unstuck
+		Local $movementDistance = ComputeDistance($myInitialX, $myInitialY, $myX, $myY)
 		If $movementDistance >= $unstuckDisplacementThreshold Then 
 			Info('Unstuck SUCCESSFUL')
 			Return $SUCCESS
@@ -1069,17 +1071,14 @@ Func MoveAggroAndKill($x, $y, $log = '', $options = $default_moveaggroandkill_op
 	Local $me = GetMyAgent()
 	Local $myX = DllStructGetData($me, 'X')
 	Local $myY = DllStructGetData($me, 'Y')
-	Local $oldMyX
-	Local $oldMyY
-	Local $movementDistance
 
 	Move($x, $y)
 
 	Local $target
 	Local $chest
 	While GetDistanceToPoint(GetMyAgent(), $x, $y) > $RANGE_NEARBY
-		$oldMyX = $myX
-		$oldMyY = $myY
+		Local $oldMyX = $myX
+		Local $oldMyY = $myY
 		$me = GetMyAgent()
 		$target = GetNearestEnemyToAgent($me)
 		If DllStructGetData($target, 'ID') <> 0 And GetDistance($me, $target) < $fightRange Then
@@ -1092,7 +1091,7 @@ Func MoveAggroAndKill($x, $y, $log = '', $options = $default_moveaggroandkill_op
 		$me = GetMyAgent()
 		$myX = DllStructGetData($me, 'X')
 		$myY = DllStructGetData($me, 'Y')
-		$movementDistance = ComputeDistance($oldMyX, $oldMyY, $myX, $myY)
+		Local $movementDistance = ComputeDistance($oldMyX, $oldMyY, $myX, $myY)
 		$isStuck = IsPlayerStuck($movementDistance, $blocked)
 		
 		If $isStuck Then 
