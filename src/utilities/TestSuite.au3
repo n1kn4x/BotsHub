@@ -93,6 +93,8 @@ Func RunTestSuite()
 
 	If TestDeathRIP() == $FAIL Then Error('Death test failed')
 
+	If StuckDetectionTest() == $FAIL Then Error('Stuck detection integration test failed')
+
 	Return $PAUSE
 EndFunc
 
